@@ -1,0 +1,110 @@
+head	1.2;
+access;
+symbols;
+locks
+	jazzybot:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2017.01.07.15.10.06;	author jazzybot;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2017.01.07.14.01.55;	author jazzybot;	state Exp;
+branches;
+next	;
+
+
+desc
+@wip
+@
+
+
+1.2
+log
+@before using remapped base_jbot_link in urdf
+@
+text
+@<launch>
+    <!--Linobot bringup-->
+        <!--Lino serial communication between arduino and pc via usb /-->
+        <node name="arduino_serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
+            <param name="port" value="/dev/linobase" />
+            <param name="baud" value="57600" />
+        </node>
+
+        <!--Lino IMU -->
+        <node pkg="ros_arduino_imu" type="raw_imu_bridge_node" name="raw_imu_bridge" output="screen" respawn="false">
+            <rosparam>
+                imu/gyroscope_bias: {x: -0.013545, y: 0.056887, z: 0.012693 }
+                imu/accelerometer_bias: {x: -0.422578, y: 0.053516, z: -0.310391 }
+            </rosparam>
+            <param name="imu/perform_calibration" value="false" />
+        </node>
+        <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_madgwick" output="screen" respawn="false" >
+            <!--param name="fixed_frame" value="odom" / -->
+            <param name="fixed_frame" value="IMU_jbot_link" />
+        </node>
+        
+        <!-- Lino base -->
+        <node name="lino_base_node" pkg="linorobot" type="lino_base_node">
+        </node>
+
+    <!--Jazzybot robot state publisher-->
+        <!--param name="robot_description" command="cat $(find .)/urdf/linorobot2jazbot.urdf" /-->
+        <param name="robot_description" textfile="./urdf/linorobot2jazbot.urdf" />
+        <param name="/use_gui" value="False" />
+        <param name="/use_sim_time" value="False" />
+
+        <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" >
+            <param name="publish_frequency" type="double" value="5.0" />
+        </node>
+        
+        <!-- Comment if using the base controller. -->
+        <node pkg="tf" type="static_transform_publisher" name="odom_base_link_broadcaster" args="0 0 0 0 0 0 /odom /base_link 100" />
+       
+        <!-- start rviz-->
+        <!-- <node name= "rviz" pkg= "rviz" type= "rviz" args= "-d $(find urdf_tutorial) /urdf.rviz" required= "true" /  -->
+
+
+
+    <!-- Kinect launch -->
+        <include file="$(find freenect_launch)/launch/freenect.launch">
+            <arg name="depth_registration" value="true" />
+        </include>
+   
+
+    <!-- Kinect cloud to laser scan -->
+        <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+            <remap from="image"     to="/camera/depth_registered/image_raw"/>
+            <remap from="camera_info" to="/camera/depth_registered/camera_info"/>
+            <remap from="scan" to="/kinect_scan"/>
+            <param name="range_max" type="double" value="4"/>
+        </node>
+    
+    <!--remap transforms -->
+        <!--node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="0 0 0 0 0 0 /openni_depth_frame /base_link 100" /-->
+        <node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="0 0 -.4 0 0 0 /camera_depth_frame /base_link 100" />
+        <node pkg="tf" type="static_transform_publisher" name="base_odom_broadcaster" args="0 0 0 0 0 0 /base_link /odom 100" />
+</launch>
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d18 2
+a19 1
+            <param name="fixed_frame" value="odom" />
+d33 3
+a35 1
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+d61 1
+a61 1
+        <node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="0 0 -.3 0 0 0 /camera_depth_frame /base_link 100" />
+@

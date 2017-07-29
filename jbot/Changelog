@@ -1,0 +1,9 @@
+* July 29 2017 ebrand - v1.1.0
+- total rewrite and covert name to jbot
+
+* Jul 21 2017 ebrand0007 - v1.0.6
+- updated src/lino_base_node.cpp to latest upstream version
+- added ros param for renaming /odom and /base_link frames
+
+* Sat Jul 08 ebrand0007 -v 1.007
+- reverted lino_base_node.cpp::velCallback back to prior to match origional firmeware

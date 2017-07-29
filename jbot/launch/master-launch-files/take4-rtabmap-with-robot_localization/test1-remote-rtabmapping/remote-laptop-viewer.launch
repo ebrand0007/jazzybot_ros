@@ -1,0 +1,3 @@
+http://wiki.ros.org/rtabmap_ros/Tutorials/RemoteMapping
+
+roslaunch rtabmap_ros rtabmap.launch rgb_topic:=/camera/data_throttled_image depth_topic:=/camera/data_throttled_image_depth camera_info_topic:=/camera/data_throttled_camera_info compressed:=true rviz:=true rtabmapviz:=false rtabmap_args:="--delete_db_on_start"

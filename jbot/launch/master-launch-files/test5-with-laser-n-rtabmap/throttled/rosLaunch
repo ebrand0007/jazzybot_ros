@@ -1,0 +1,126 @@
+#!/bin/bash
+
+RETVAL=0
+
+#Client01 launch files, w/o .launch
+CLIENT01_LAUNCH="
+kinect-pointcloud_to_laser
+robot_localization-sensor_fusion
+rtabmap"
+
+#master launch files, w/o .launch
+MASTER_LAUNCH="
+jbot-kinect
+throttle
+"
+
+usage ()
+{
+        echo $"Usage: $0 {master|client01 start|stop|status|restart" 1>&2
+        RETVAL=1
+}
+
+
+client01_start ()
+{
+    for LAUNCH in $CLIENT01_LAUNCH; do
+        if ! screen -list | grep "\.${LAUNCH}\s" >/dev/null; then
+            echo "Starting $LAUNCH"
+            screen -d -m -S $LAUNCH bash -c ". /opt/ros/indigo/setup.bash && roslaunch $LAUNCH.launch"
+            sleep 3
+        fi
+        let RETVAL=$RETVAL+$?
+    done
+    return $RETVAL
+
+}
+
+client01_stop ()
+{
+
+    for LAUNCH in $CLIENT01_LAUNCH; do
+        if  screen -list | grep "\.${LAUNCH}\s" >/dev/null; then
+            echo "Stopping $LAUNCH"
+            screen -S $LAUNCH -X quit
+            let RETVAL=$RETVAL+$?
+        fi  
+    done
+    return $RETVAL
+}
+
+client01_status ()
+{
+    screen -list
+    return $?
+}
+
+master_start ()
+{
+    #clean the logs
+    echo "purging ~/.ros/logs"
+    echo "y" | rosclean purge
+
+    #start ROSCORE
+    if  ! screen -list | grep "\.roscore\s" >/dev/null; then
+        echo "Starting roscore"
+        screen -S roscore -d -m bash -c ". /opt/ros/indigo/setup.bash && roscore"
+        sleep 5
+    fi
+    for LAUNCH in $MASTER_LAUNCH; do
+        if ! screen -list | grep "\.${LAUNCH}\s" >/dev/null; then
+            echo "Starting $LAUNCH"
+            screen -d -m -S $LAUNCH bash -c ". /opt/ros/indigo/setup.bash && roslaunch $LAUNCH.launch"
+            sleep 5
+        fi
+        let RETVAL=$RETVAL+$?
+    done
+    return $RETVAL
+
+}
+
+master_stop ()
+{
+
+    for LAUNCH in $MASTER_LAUNCH; do
+        if  screen -list | grep "\.${LAUNCH}\s" >/dev/null; then
+            echo "Stopping $LAUNCH"
+            screen -S $LAUNCH -X quit
+            let RETVAL=$RETVAL+$?
+        fi
+    done
+    
+    #kill roscore
+    screen -S roscore -X quit
+    let RETVAL=$RETVAL+$?
+
+    return $RETVAL
+}
+
+master_status ()
+{
+    screen -list
+    return $?
+}
+
+case "$1" in
+    client01) 
+        case "$2" in
+            start)  client01_start;;
+            stop)   client01_stop;;
+            status) client01_status;;
+            *) usage;;
+        esac;;
+
+    master)
+        case "$2" in
+            start)  master_start;;
+            stop)   master_stop;;
+            status) master_status;;
+            *) usage;;
+        esac;;
+
+    *) usage;;
+esac  
+
+
+exit $RETVAL

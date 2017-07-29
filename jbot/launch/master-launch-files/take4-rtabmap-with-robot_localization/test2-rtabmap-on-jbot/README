@@ -1,0 +1,6 @@
+Goal:
+run rtabmap on jbot
+viewable on laptop with rviz
+
+#Next test3 is tuning rtabmap
+next testX is removing throtteling and comparing

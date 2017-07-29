@@ -1,0 +1,78 @@
+head	1.2;
+access;
+symbols;
+locks
+	jazzybot:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2017.07.09.12.01.26;	author jazzybot;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2017.07.06.01.07.06;	author jazzybot;	state Exp;
+branches;
+next	;
+
+
+desc
+@default from https://github.com/ros-planning/navigation/blob/kinetic-devel/robot_pose_ekf/robot_pose_ekf.launch
+@
+
+
+1.2
+log
+@wip, baselink/basefootprint options in linorobot
+@
+text
+@<?xml version="1.0"?>
+
+
+<launch>
+
+<!--node pkg="tf" type="static_transform_publisher" name="base_link_to_base_footprint" args="0 0 0 0 0 0 base_link base_footprint 100"/-->
+
+
+<node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+  <remap from="imu_data" to="imu/data" /> <!--correct-->
+  <param name="output_frame" value="odom_combined"/>
+  <param name="base_footprint_frame" value="base_link"/>
+  <param name="freq" value="30.0"/>
+  <param name="sensor_timeout" value="1.0"/>  
+  <param name="odom_used" value="true"/>
+  <param name="imu_used" value="true"/>
+  <param name="vo_used" value="false"/>
+  <param name="use_sim_time" value="true"/>
+
+  <remap from="lino_odom" to="pr2_base_odometry/odom" />
+</node>
+
+
+</launch>
+
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 3
+d6 3
+d10 1
+d12 1
+a12 1
+  <param name="base_footprint_frame" value="base_footprint"/>
+d17 2
+a18 1
+  <param name="vo_used" value="true"/>
+d20 1
+a20 1
+  <remap from="odom" to="pr2_base_odometry/odom" />
+d23 1
+d25 2
+@

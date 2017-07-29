@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<launch>
+
+
+  <!--http://wiki.ros.org/rtabmap_ros#rtabmap_ros.2BAC8-data_throttle-->
+  <!--Outputs to:
+      <remap from="rgb/image" to="/camera/data_throttled_image"/>
+      <remap from="depth/image" to="/camera/data_throttled_image_depth"/>
+      <remap from="rgb/camera_info" to="/camera/data_throttled_camera_info"/>
+  -->
+  <!-- Use same nodelet used by Freenect/OpenNI -->
+  <group ns="camera">
+    <node pkg="nodelet" type="nodelet" name="data_throttle" args="load rtabmap_ros/data_throttle camera_nodelet_manager" output="screen">
+      <param name="rate" type="double" value="5"/> <!--5 Htz-->
+      <param name="decimation" type="int" value="1"/>  <!-- Reduce the image size, e.g., 2 means "width/2 x height/2". -->
+      <!--TODO: Review other params, qyeue size and aprox_sync-->
+
+      <remap from="rgb/image_in"       to="rgb/image_rect_color"/>
+      <remap from="depth/image_in"     to="depth_registered/image_raw"/>
+      <remap from="rgb/camera_info_in" to="rgb/camera_info"/>
+
+      <remap from="rgb/image_out"       to="data_throttled_image"/>
+      <remap from="depth/image_out"     to="data_throttled_image_depth"/>
+      <remap from="rgb/camera_info_out" to="data_throttled_camera_info"/>
+
+    </node>
+  </group>
+
+   <!--Voxel pointcloud throtteling-->
+       <!--http://wiki.ros.org/pcl_ros/Tutorials/VoxelGrid%20filtering-->
+       <!--http://wiki.ros.org/pcl_ros/Tutorials/filters#VoxelGrid-->
+
+       <!-- Input Topic is: camera/depth_registered/points -->
+       <!-- Output Topic is: voxel_grid/output -->
+
+       <!-- Run a VoxelGrid filter to clean NaNs and downsample the data -->
+       <!--node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="screen" />
+       <node pkg="nodelet" type="nodelet" name="voxel_grid" args="load pcl/VoxelGrid pcl_manager" output="screen">
+
+           <remap from="~input" to="camera/depth_registered/points" />
+           <rosparam>
+             filter_field_name: z
+             filter_limit_min: 0.01
+             filter_limit_max: 5.5
+             filter_limit_negative: False
+             leaf_size: 0.04 #0.01  Range: 0.0 to 1.0, smaller is more points
+           </rosparam>
+       </node >
+       -->
+
+
+</launch>

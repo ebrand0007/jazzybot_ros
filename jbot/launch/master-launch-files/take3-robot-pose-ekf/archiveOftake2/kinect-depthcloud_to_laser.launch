@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Kinect launch -->
+        <include file="$(find freenect_launch)/launch/freenect.launch">
+            <arg name="depth_registration" value="true" />
+        </include>
+
+
+    <!-- Kinect cloud to laser scan   http://wiki.ros.org/depthimage_to_laserscan -->
+        <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+            <remap from="image"     to="/camera/depth_registered/image_raw"/>
+            <remap from="camera_info" to="/camera/depth_registered/camera_info"/>
+            <!--remap from="scan" to="/kinect_scan"/ -->
+            <param name="range_max" type="double" value="4"/>
+        </node>
+
+
+
+    <!--remap the camera for prior version (doesnt have base_laser_tf.cpp, uses static_transform_publisuer instead)
+         frame as we arnt using the neato xv11, and using kinect instead-->
+    <!--remap transforms: http://wiki.ros.org/tf#static_transform_publisher  -->
+    <!-- Publish a static coordinate transform frame (tf) using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+         Last arg is The period, in milliseconds, specifies how often to send a transform. 100ms (10hz) is a good value. -->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args=".381 0 .343 0 0 0 base_link camera_link 100"/>
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 base_link laser  100"/-->
+    
+    <!-- Use below or OR use this:
+         < node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/-->
+    <!--Note above offset must match linorobot/src/base_laser_tf.cpp for laser offset-->
+    <!--OR USE robot_pose_ekf (prefered)-->
+    
+
+    
+    <!--No work to remap transform, use above>
+    <node pkg="tf" type="tf_remap" name="tf_remapper" output="screen">
+       <rosparam param="mappings">
+           [{old: camera_depth_frame, new: /laser2}]
+       </rosparam>
+    </node>
+    <-->
+
+
+    <!-- linobot laser  -->
+    <!--node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_node">
+      <param name="port" value="/dev/linolidar"/>
+      <param name="firmware_version" value="2"/>
+      <param name="frame_id" value="laser"/>
+    </node>
+
+    <node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/>
+    <-->
+
+
+
+
+</launch>

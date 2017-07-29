@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="rtabmap" pkg="rtabmap_ros" type="rtabmap" output="screen" args="--delete_db_on_start --udebug">
+    <param name="rgb_topic" value="/camera/data_throttled_image depth_topic"/>
+    <param name="depth_topic" value="/camera/data_throttled_image_depth"/>
+    <param name="camera_info_topic" value="/camera/data_throttled_camera_info"/>
+    <param name="compressed" value="true"/>
+    <param name="rviz" value="false"/>
+    <param name="rtabmapviz" value="false"/>
+    <param name="approx_sync" value="true"/> 
+       <!--Use approximate time synchronization of input messages. If false, note that the odometry input must same timestamps-->
+    <!--param name="" value=""/-->
+
+    <remap from="cloud" to="voxel_cloud" />
+
+    <param name="decimation"  type="double" value="2"/>
+    <param name="voxel_size"  type="double" value="0.02"/>
+
+  </node>
+
+</launch>
+
+<!--
+"* /points_xyzrgb/approx_sync: True
+ * /points_xyzrgb/decimation: 2.0
+ * /points_xyzrgb/voxel_size: 0.02
+ * /rosdistro: indigo
+ * /rosversion: 1.11.18
+ * /rtabmap/rgbd_odometry/approx_sync: True
+ * /rtabmap/rgbd_odometry/config_path: 
+ * /rtabmap/rgbd_odometry/frame_id: camera_link
+ * /rtabmap/rgbd_odometry/queue_size: 10
+ * /rtabmap/rgbd_odometry/wait_for_transform_duration: 0.2
+ * /rtabmap/rtabmap/Mem/IncrementalMemory: true
+ * /rtabmap/rtabmap/Mem/InitWMWithAllNodes: false
+ * /rtabmap/rtabmap/approx_sync: True
+ * /rtabmap/rtabmap/config_path: 
+ * /rtabmap/rtabmap/database_path: ~/.ros/rtabmap.db
+ * /rtabmap/rtabmap/frame_id: camera_link
+ * /rtabmap/rtabmap/queue_size: 10
+ * /rtabmap/rtabmap/subscribe_depth: True
+ * /rtabmap/rtabmap/subscribe_scan: False
+ * /rtabmap/rtabmap/subscribe_scan_cloud: False
+ * /rtabmap/rtabmap/subscribe_stereo: False
+ * /rtabmap/rtabmap/wait_for_transform_duration: 0.2"
+NODES
+  /
+    rtabmap (rtabmap_ros/rtabmap)
+
+
+Dump params:
+rosrun rtabmap_ros rtabmap - -params
+
+ * /rosdistro: indigo
+ * /rosversion: 1.11.18
+ * /rtabmap/approx_sync: True
+ * /rtabmap/camera_info_topic: /camera/data_thro...
+ * /rtabmap/compressed: True
+ * /rtabmap/decimation: 2.0
+ * /rtabmap/depth_topic: /camera/data_thro...
+ * /rtabmap/rgb_topic: /camera/data_thro...
+ * /rtabmap/rtabmapviz: False
+ * /rtabmap/rviz: False
+ * /rtabmap/voxel_size: 0.02
+
+
+-->
+

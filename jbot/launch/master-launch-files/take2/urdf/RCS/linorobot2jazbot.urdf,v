@@ -1,0 +1,224 @@
+head	1.2;
+access;
+symbols;
+locks
+	jazzybot:1.2; strict;
+comment	@# @;
+
+
+1.2
+date	2017.01.07.15.04.29;	author jazzybot;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2017.01.07.14.28.18;	author jazzybot;	state Exp;
+branches;
+next	;
+
+
+desc
+@init commit, has 2 imu links, one URDF, one software
+@
+
+
+1.2
+log
+@renaming base_link and imu_link with _jbot
+@
+text
+@<?xml version="1.0"?>
+   <robot name="lino_robot">
+    
+      <link name="base_link">
+	<visual>
+	  <geometry>
+	    <box size="0.8128 0.4699 0.0254"/> 
+	  </geometry>
+	  <origin rpy="0 0 0" xyz="0.0 0.00 0.3175"/>
+	  <material name="blue">
+	    <color rgba="0 0 .8 1"/>
+	  </material>
+	</visual>
+      </link>
+
+      
+      
+      <!--Drive Wheel support and wheels -->
+	  <!--Drive Whee Support-->
+	      <joint name="base_to_drive_wheel_support" type="fixed">
+		<parent link="base_link"/>
+		<child link="drive_wheel_support"/>
+		<origin xyz="0 0 0"/>
+	      </joint> 
+	      <link name="drive_wheel_support">
+		<visual>
+		  <geometry>
+		    <!--box size="0.1524 0.4699 0.0762"/-->
+		    <box size="0.1524 0.57785 0.0762"/>
+		  </geometry>
+		  <origin rpy="0 0 0" xyz="-0.254 0.0 0.2667"/>
+		  <material name="blue">
+		    <color rgba="0 0 .8 1"/>
+		  </material>
+		</visual>
+	      </link>	    
+	    
+	  <!--Left Drive Wheel -->
+	      <link name="wheel_left">
+		<visual>
+		  <geometry>
+		    <cylinder length="0.0762" radius="0.1143"/>
+		  </geometry>
+		  <origin rpy="1.57 0 0" xyz="0 0 0"/>
+		  <material name="black">
+		    <color rgba="0 0 0 1"/>
+		  </material>
+		</visual>
+	      </link>	      
+	      <!--joint name="base_to_wheel_left" type="continuous"-->
+	      <joint name="base_to_wheel_left" type="fixed">
+		<axis rpy="0 0 0" xyz="0 1 0"/>
+		<parent link="base_link"/>
+		<child link="wheel_left"/>
+		<!--origin xyz="0 0 0"/-->
+		<origin rpy="0 0 0" xyz="-0.254 0.327025 0.1143"/>
+	      </joint>      
+
+	<!--Right Drive Wheel -->
+	    <link name="wheel_right">
+	      <visual>
+		<geometry>
+		  <cylinder length="0.0762" radius="0.1143"/>
+		</geometry>
+		<origin rpy="1.57 0 0" xyz="0 0 0"/>
+		<material name="black">
+		  <color rgba="0 0 0 1"/>
+		</material>
+	      </visual>
+	    </link>
+	    
+	    <!--joint name="base_to_wheel_right" type="fixed"-->
+	    <joint name="base_to_wheel_right" type="continuous">
+	      <axis rpy="0 0 0" xyz="0 1 0"/>
+	      <parent link="base_link"/>
+	      <child link="wheel_right"/>
+	      <!--origin rpy="0 0 3.14" xyz="-0.254 -0.327025 0.1143"/-->
+	      <origin rpy="0 0 0" xyz="-0.254 -0.327025 0.1143"/>
+	    </joint>
+
+	    
+	    
+      
+      <!--Front caster Wheel support and wheels -->      
+	  <!--Drive Whee Support-->
+	      <joint name="base_to_front_wheel_support" type="fixed">
+		<parent link="base_link"/>
+		<child link="front_wheel_support"/>
+		<origin xyz="0 0 0"/>
+	      </joint> 
+	      
+	      <link name="front_wheel_support">
+		<visual>
+		  <geometry>
+		    <box size="0.13335 0.4699 0.1143"/>
+		  </geometry>
+		  <origin rpy="0 0 0" xyz="0.339725 0.0 0.24765"/>
+		<material name="blue">
+		  <color rgba="0 0 .8 1"/>
+		</material>
+		</visual>
+	      </link>	        
+      
+	  <!--Front left caster wheel --> 
+	      <link name="caster_wheel_left">
+		<visual>
+		  <geometry>
+		    <cylinder length="0.03175" radius="0.09525"/>
+		  </geometry>
+		  <origin rpy="1.57 0 0" xyz="0.339725 0.206375 0.09525"/>
+		  <material name="black">
+		    <color rgba="0 0 0 1"/>
+		  </material>
+		</visual>
+	      </link>
+	      
+	      <joint name="base_to_caster_wheel_left" type="fixed">
+		<parent link="base_link"/>
+		<child link="caster_wheel_left"/>
+		<origin xyz="0 0 0"/>
+	      </joint>	      
+	      
+          <!--Front Right caster wheel --> 
+	      <link name="caster_wheel_right">
+		<visual>
+		  <geometry>
+		    <cylinder length="0.03175" radius="0.09525"/>
+		  </geometry>
+		  <origin rpy="1.57 0 0" xyz="0.339725 -0.206375 0.09525"/>
+		  <material name="black">
+		    <color rgba="0 0 0 1"/>
+		  </material>
+		</visual>
+	      </link>    
+		 
+	      <joint name="base_to_caster_wheel_right" type="fixed">
+		<parent link="base_link"/>
+		<child link="caster_wheel_right"/>
+		<origin xyz="0 0 0"/>
+	      </joint>
+
+      
+      
+      
+      <!--IMU : joint , link , sensor  -->
+      <!-- http://answers.ros.org/question/48983/how-to-add-pressure-sensors-gyroscopes-and-accelerometers-to-an-urdf-model/ -->
+      
+      <joint name="IMU_joint" type="fixed">
+	  <axis xyz="1 0 0"/>      
+	  <origin xyz="-0.254 0 0.3674"/>
+	  <parent link="base_link"/>
+	  <child link="IMU_jbot_link"/>
+	</joint>
+      <link name="IMU_jbot_link">
+	<inertial>
+	  <mass value="0.001"/>
+	  <origin rpy="0 0 0" xyz="0 0 0"/>
+	  <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.0001"/>
+	</inertial>
+	<visual>
+	  <origin rpy="0 0 0" xyz="0 0 0"/>
+	  <geometry>
+	    <box size="0.01 0.01 0.01"/>
+	  </geometry>
+	  <material name="red"/>  
+	</visual>
+	<collision>
+	  <origin rpy="0 0 0" xyz="0 0 0"/>
+	  <geometry>
+	    <box size=".01 .01 .01"/>
+	  </geometry>
+	</collision>
+    </link>
+  </robot>
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d147 2
+a148 1
+      <joint name="imu_joint" type="fixed">
+d152 1
+a152 1
+	  <child link="imu_link"/>
+d154 1
+a154 1
+      <link name="imu_link">
+a173 1
+
+@

@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!--copied from linobot/bringup.launch /opt/ros/indigo/share/linorobot/launch/bringup.launch -->
+  <!--serial communication between arduino and pc via usb /-->
+  <node name="arduino_serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
+    <param name="port" value="/dev/linobase" />
+    <param name="baud" value="57600" />
+  </node>
+
+
+ <node pkg="ros_arduino_imu" type="raw_imu_bridge_node" name="raw_imu_bridge" output="screen" respawn="false">
+   <!--default world_frame: eun-->
+   <param name="imu/use_mag_msg" value="false"/> 
+     <!--when use_mag_msg=false /imu/mag messages are sent in Vector3Stampe, true=MagneticField(depricated) -->
+  <!--rosparam>
+   imu/gyroscope_bias: {x: -0.013545, y: 0.056887, z: 0.012693 }
+   imu/accelerometer_bias: {x: -0.422578, y: 0.053516, z: -0.310391 }
+    </rosparam-->
+   <param name="imu/perform_calibration" value="true" />
+ </node>
+
+
+  <node name="lino_base_node" pkg="linorobot" type="lino_base_node" output="screen">
+    <!--remap from="/odom" to="lino_odom" /-->
+    <param name="odom_frame" value="lino_odom" />
+    <param name="baselink_frame" value="base_link" />
+    <param name="imu_topic" value="imu/data" />
+    <param name="vel_topic" value="raw_vel" />
+
+  </node>
+
+
+  <!--http://wiki.ros.org/imu_filter_madgwick-->
+  <!-- world_frame default: "nwu" ?? -->
+  <!-- reaures mag_msg = true in ros_arduino_imu -->
+  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_madgwick" output="screen" respawn="false" >
+    <param name="world_frame" value="eun"/>  <!--eun is required by robot_localization/ekf_fusion-->
+    <param name="use_magnetic_field_msg" value="false"/>
+    <param name="publish_tf" value="true" /> <!--required true for robot_pose_ekf-->
+    <!--param name="fixed_frame" value="imu_baselink" /--> <!--this is the published imu_link parent-->
+    <param name="fixed_frame" value="lino_odom" /> <!--this is the published imu_link parent-->
+    <param name="reverse_tf" value="false" />
+    <param name="publish_debug_topics" value="true" />
+  </node>
+
+
+  <!--http://wiki.ros.org/imu_complementary_filter-->
+  <!--param name="fixed_frame" value="imu_baselink" /-->
+  <!--uses mag_msg and eun-->
+  <!--node pkg="imu_complementary_filter" type="complementary_filter_node" name="imu_complementary_filter" output="screen" respawn="false" >
+    <param name="fixed_frame" value="odom" />
+    <param name="use_mag" value="true" />
+    <param name="publish_tf" value="true"/>
+    <param name="publish_debug_topics" value="true" />
+    <param name="reverse_tf" value="false" />
+  </node-->
+
+  <!-- Publish a static coordinate transform frame (tf) using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+                               Last arg is The period, in milliseconds, specifies how often to send a transform. 100ms (10hz) is a good value. --> 
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_imu_base_link" args="-.381 0 .343 0 0 0 base_link imu_baselink 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="lino_odom_to_odom" args="0 0 o 0 0 0 odom  lino_odom 100"/>
+
+
+
+
+</launch>

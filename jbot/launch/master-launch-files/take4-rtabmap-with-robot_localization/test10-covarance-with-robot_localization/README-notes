@@ -1,0 +1,20 @@
+robot_localization
+  https://github.com/introlab/rtabmap_ros/blob/master/launch/tests/sensor_fusion.launch
+
+Covarane matrix:
+
+Sample code:
+  https://github.com/eemmyy23/odom_covariance
+
+Sample code for a robt base:
+  https://github.com/turtlebot/turtlebot_create/blob/indigo/create_node/src/create_node/gyro.py  
+  https://github.com/sungjik/my_personal_robotic_companion/blob/master/my_personal_robotic_companion/src/base_controller.cpp
+
+
+misc:
+  http://answers.ros.org/question/9446/how-do-i-compute-the-covariance-matrix-for-an-orientation-sensor/
+
+
+
+ros_arduino_bridge with ekf fork
+  https://github.com/KristofRobot/ros_arduino_bridge/commit/9f0693479d4900cc8c7e7d5a6f125799c3b0d94e

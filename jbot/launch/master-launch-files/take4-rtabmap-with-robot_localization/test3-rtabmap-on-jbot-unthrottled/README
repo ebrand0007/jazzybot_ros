@@ -1,0 +1,37 @@
+Goal:
+run rtabmap on jbot
+viewable on laptop with rviz
+
+#Next test3 is tuning rtabmap
+next testX is removing throtteling and comparing
+
+
+#test4 - running unthrottled
+roslaunch jbot-kinect-nothrottle.launch
+rtabmap-scan-nothrottle.launch
+
+
+
+Tuning
+http://wiki.ros.org/rtabmap_ros/Tutorials/Advanced%20Parameter%20Tuning
+
+
+ $ rosservice call rtabmap/set_mode_localization
+ $ rosservice call rtabmap/set_mode_mapping
+
+ # clear pointclouf map:
+ rosservice call rtabmap/reset
+ rosservice call rtabmap/trigger_new_map
+
+
+#Octomap
+#use octomap_sever or:
+  https://github.com/introlab/rtabmap/issues/40
+  call service: rtabmap/octomap_full or /rtabmap/octomap_binary
+
+
+
+
+#octomap: http://official-rtab-map-forum.67519.x6.nabble.com/Build-octomap-with-rtabmap-td68.html
+
+

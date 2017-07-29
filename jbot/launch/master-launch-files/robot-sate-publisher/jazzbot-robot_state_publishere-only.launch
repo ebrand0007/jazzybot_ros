@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<launch>
+
+
+        <param name="robot_description" textfile="./urdf/linorobot2jazbot.urdf" />
+        <param name="/use_gui" value="False" />
+        <param name="/use_sim_time" value="False" />
+
+        <!--only use jpointstate in simulaters-->
+        <!-- node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" /-->
+        <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" >
+            <param name="publish_frequency" type="double" value="5.0" />
+            <remap from="joint_states" to="wheel_jointstate"/>
+        </node>
+
+</launch>
+
+<!--notes
+     /robot/joint_states (sensor_msgs-JointState)
+
+    name[i]: '<component_id>' of i-th joint in message value arrays.
+    position[i]: position of joint i rad
+    velocity[i]: velocity of joint i in rad/s
+    effort[i]: effort applied in joint i in Nm
+
+   calculate radian position based on endocer ticks:
+     Example: https://github.com/uos/kurt_driver/blob/kinetic/kurt_base/src/kurt_base.cc#L162
+
+   calculate velocity based on incoder tick and encoder time:
+     Example: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#CA-e6fba4e92077b8226b57e9a62abdb695f9f5a84f_72
+-->

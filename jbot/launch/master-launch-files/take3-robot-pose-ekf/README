@@ -1,0 +1,24 @@
+
+Starting gmapping
+rolaunch linorobot bringup.launch
+roslaunch kinect-pointcloud_to_laser.launch
+roslaunch robot_pose_ekf.launch
+roslaunch slam-only.launch
+
+
+
+http://wiki.ros.org/robot_pose_ekf/Troubleshooting
+
+#NOTE: EKF requres vo to be published,
+   Have to use rtabmap to publish vo on topic /odom
+   #http://wiki.ros.org/rtabmap_ros
+
+   #Launch Files: https://github.com/introlab/rtabmap_ros/tree/master/launch
+
+
+
+#rtabmap
+  http://wiki.ros.org/rtabmap_ros#Tutorials
+  http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot
+  http://answers.ros.org/question/239823/build-a-map-with-rtabmap-realsense-sick-and-imu-with-sensor-fusion/
+  *Sample covariance using robot locatalization: https://github.com/introlab/rtabmap_ros/blob/master/launch/tests/sensor_fusion.launch

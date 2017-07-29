@@ -1,0 +1,167 @@
+head	1.5;
+access;
+symbols;
+locks
+	jazzybot:1.5; strict;
+comment	@# @;
+
+
+1.5
+date	2017.01.15.20.24.08;	author jazzybot;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	2017.01.15.19.26.24;	author jazzybot;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	2017.01.15.17.12.44;	author jazzybot;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	2017.01.15.01.15.57;	author jazzybot;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	2010.01.01.06.07.59;	author jazzybot;	state Exp;
+branches;
+next	;
+
+
+desc
+@seems to be good config
+@
+
+
+1.5
+log
+@OK. V1.0
+@
+text
+@<?xml version="1.0"?>
+<launch>
+    <!-- Kinect launch -->
+        <include file="$(find freenect_launch)/launch/freenect.launch">
+            <arg name="depth_registration" value="true" />
+        </include>
+
+
+    <!-- Kinect cloud to laser scan -->
+        <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+            <remap from="image"     to="/camera/depth_registered/image_raw"/>
+            <remap from="camera_info" to="/camera/depth_registered/camera_info"/>
+            <!--remap from="scan" to="/kinect_scan"/ -->
+            <param name="range_max" type="double" value="4"/>
+        </node>
+
+
+
+    <!--remap the camera for prior version (doesnt have base_laser_tf.cpp, uses static_transform_publisuer instead)
+         frame as we arnt using the neato xv11, and using kinect instead-->
+    <!--remap transforms: http://wiki.ros.org/tf#static_transform_publisher  -->
+    <!-- Publish a static coordinate transform frame (tf) using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+         Last arg is The period, in milliseconds, specifies how often to send a transform. 100ms (10hz) is a good value. -->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args=".381 0 .343 0 0 0 base_link camera_link 100"/>
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 base_link laser  100"/-->
+    
+    <!-- Use below or OR use this:
+         < node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/-->
+    <!--Note above offset must match linorobot/src/base_laser_tf.cpp for laser offset-->
+    <!--OR USE robot_pose_ekf (prefered)-->
+    
+
+    
+    <!--No work to remap transform, use above>
+    <node pkg="tf" type="tf_remap" name="tf_remapper" output="screen">
+       <rosparam param="mappings">
+           [{old: camera_depth_frame, new: /laser2}]
+       </rosparam>
+    </node>
+    <-->
+
+
+    <!-- linobot laser  -->
+    <!--node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_node">
+      <param name="port" value="/dev/linolidar"/>
+      <param name="firmware_version" value="2"/>
+      <param name="frame_id" value="laser"/>
+    </node>
+
+    <node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/>
+    <-->
+
+
+
+
+</launch>
+@
+
+
+1.4
+log
+@working a little
+@
+text
+@a17 6
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args=".381 0 .343 0 0 0 base_link camera_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 base_link laser  100"/>
+
+    <!--node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="-.381 0 -.343 0 0 0 /base_link /camera_depth_frame 100" /-->
+    <!--node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="-.381 0 -.343 0 0 0 camera_link base_link 100" /-->
+  
+d22 1
+a22 1
+    <!-- Publish a static coordinate transform to tf using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+d24 3
+a28 2
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args="0.065 0 0.196 0 0 0  /base_link /laser  100"/-->
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 base_link laser  100"/-->
+d30 1
+@
+
+
+1.3
+log
+@stuff with statac fram mapping
+@
+text
+@d17 6
+a22 1
+    <node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="-.381 0 -.343 0 0 0 /camera_depth_frame base_link 100" />
+d33 1
+a33 1
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 /base_link /laser  100"/>
+@
+
+
+1.2
+log
+@wip
+removing static transform??
+@
+text
+@d17 1
+a18 1
+    <node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/>
+d20 2
+a21 1
+    <!--remap the camera frame as we arnt using the neato xv11, and using kinect instead-->
+d25 4
+a28 1
+    <node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="-.381 0 -.343 0 0 0 /camera_depth_frame base_link 75" />
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@a25 2
+    <!--node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="0 0 -.4 0 0 0 /camera_depth_frame base_link 75" /-->
+    <!--node pkg="tf" type="static_transform_publisher" name="kinect_base_broadcaster" args="0 0 0 0 0 0 /camera_depth_frame laser 75" /-->
+@

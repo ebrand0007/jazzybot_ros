@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+
+
+<launch>
+
+<!--node pkg="tf" type="static_transform_publisher" name="base_link_to_base_footprint" args="0 0 0 0 0 0 base_link base_footprint 100"/-->
+
+
+<node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf" output="screen">
+  <remap from="imu_data" to="imu/data" /> <!--correct-->
+  <param name="output_frame" value="odom_combined"/>
+  <param name="base_footprint_frame" value="base_link"/>
+  <param name="freq" value="30.0"/>
+  <param name="sensor_timeout" value="1.0"/>  
+  <param name="odom_used" value="true"/>
+  <param name="imu_used" value="true"/>
+  <param name="vo_used" value="false"/>
+  <param name="use_sim_time" value="true"/>
+
+  <param name="debug" value="true"/>
+  <param name="self_diagnose" value="true"/>
+  <!--remap from="lino_odom" to="pr2_base_odometry/odom" /-->
+  <!--remap from="lino_odom" to="odom" /--> <!-- Input wheel odom topic-->
+  <remap from="odom" to="lino_odom" /> <!-- Input wheel odom topic-->
+</node>
+
+
+</launch>
+
+

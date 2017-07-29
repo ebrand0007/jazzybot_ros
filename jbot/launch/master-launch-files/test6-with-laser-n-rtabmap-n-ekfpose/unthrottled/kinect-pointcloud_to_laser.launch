@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- RGBD  pointcloud to laser scan   http://wiki.ros.org/pointcloud_to_laserscan -->
+      <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+        <!-- dump pramams: rosrun pointcloud_to_laserscan pointcloud_to_laserscan_node - -params -->
+
+        <!--remap from="cloud_in" to the point cloud -->
+            
+            <!--Unthrottled cloudi -->  
+                <remap from="cloud_in" to="camera/depth_registered/points"/>
+            <!--Throttled alternately to above, use the downsampled voxelgrid for cloud_in, it reduces bandwith 
+                 but suck up CPU bigtime. Use iVoxel pointcloud Throttling  above-->
+                <!--remap from="cloud_in" to="voxel_grid/output"/-->
+
+        <!-- Map output laser topic, default is "scan", so below is commented out-->
+        <!--remap from="scan" to="$(arg camera)/scan"/-->
+        <remap from="scan" to="/scan"/>
+
+        <rosparam>
+            #To reconfigure: rosrun dynamic_reconfigure reconfigure_gui
+            #                rosrun rqt_reconfigure rqt_reconfigure
+            target_frame: camera_link # Leave disabled to output scan in pointcloud frame
+            transform_tolerance: 0.01
+
+            #horizental range to mark an onbisticele min to max, min is floor, max is top of robot
+            min_height: -0.343 #-0.37 #0.0 # min hight in meters from laser centerline to ground.  laser CL to ground is  -14in or -.355 meters
+            max_height: 0.21 #-0.6 # max hight meters to mark as obsticle, this is the height of the robot above the laser
+
+            #angle_min: -1.5708 # -M_PI/2
+            #angle_max: 1.5708 # M_PI/2
+            angle_increment: .009 #0.0045 #0.009 #0.003 #0.087 # M_PI/360.0  #this is the angle between laser points looing down
+            scan_time: 0.3333 @in seconds
+            range_min: 0.45 #distance in meters
+            range_max: 5.0 #distance in meters
+            use_inf: true
+
+            # Concurrency level, affects number of pointclouds queued for processing and number of threads used
+            # 0 : Detect number of cores
+            # 1 : Single threaded
+            # 2->inf : Parallelism level
+            concurrency_level: 1
+        </rosparam>
+
+
+            <!--emap from="image"     to="/camera/depth_registered/image_raw"/-->
+            <!--remap from="camera_info" to="/camera/depth_registered/camera_info"/-->
+            <!--param name="range_max" type="double" value="4"/-->
+            
+            <!--blieve below is default and not needed-->
+            <!--remap from="scan" to="/kinect_scan"/ -->
+        </node>
+
+
+
+
+
+    <!--remap the camera for prior version (doesnt have base_laser_tf.cpp, uses static_transform_publisuer instead)
+         frame as we arnt using the neato xv11, and using kinect instead-->
+    <!--remap transforms: http://wiki.ros.org/tf#static_transform_publisher  -->
+    <!-- Publish a static coordinate transform frame (tf) using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+         Last arg is The period, in milliseconds, specifies how often to send a transform. 100ms (10hz) is a good value.>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args=".381 0 .343 0 0 0 base_link camera_link 100"/-->
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_laser" args=".381 0 .343 0 0 0 base_link laser  100"/-->
+    
+    <!-- Use below or OR use this:
+         < node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/-->
+    <!--Note above offset must match linorobot/src/base_laser_tf.cpp for laser offset-->
+    <!--OR USE robot_pose_ekf (prefered)-->
+    
+
+    
+    <!--No work to remap transform, use above>
+    <node pkg="tf" type="tf_remap" name="tf_remapper" output="screen">
+       <rosparam param="mappings">
+           [{old: camera_depth_frame, new: /laser2}]
+       </rosparam>
+    </node>
+    <-->
+
+
+    <!-- linobot laser  -->
+    <!--node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_node">
+      <param name="port" value="/dev/linolidar"/>
+      <param name="firmware_version" value="2"/>
+      <param name="frame_id" value="laser"/>
+    </node>
+
+    <node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/>
+    <-->
+
+
+
+
+</launch>

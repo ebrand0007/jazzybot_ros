@@ -1,0 +1,84 @@
+head	1.1;
+access;
+symbols;
+locks
+	jazzybot:1.1; strict;
+comment	@# @;
+
+
+1.1
+date	2010.01.01.00.20.42;	author jazzybot;	state Exp;
+branches;
+next	;
+
+
+desc
+@wip after flipping imu over
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@<?xml version="1.0"?>
+<launch>
+
+  <include file="$(find freenect_launch)/launch/freenect.launch">
+     <arg name="depth_registration" value="true" />
+  </include>
+
+
+  <!--set camera_link to base_link transforms-->
+  <!--http://wiki.ros.org/tf#static_transform_publisher  -->
+  <!-- Publish a static coordinate transform frame (tf) using an x/y/z offset in meters and yaw/pitch/roll in radians. 
+                        Last arg is The period, in milliseconds, specifies how often to send a transform. 100ms (10hz) is a good value. -->
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args=".381 0 .343 0 0 0 base_link camera_link 100"/>
+  <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_imu_base_link" args="-.381 0 .343 0 0 0 base_link imu_baselink 100"/-->
+  <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_ekf_base_link" args="0 0 0 0 0 0 odom ekf_baselink 100"/-->
+
+
+
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
+
+        <remap from="image"     to="/camera/depth_registered/image_raw"/>
+        <remap from="camera_info" to="/camera/depth_registered/camera_info"/>
+        <!--remap from="scan" to="/kinect_scan"/ -->
+
+ 
+        <!-- Param Name         Description                                           Default Min   Max    -->
+        <!-- "scan_height"     "Height of the laser band (in pixels)."                1       1     500    -->
+        <!-- "scan_time"       "Time for the entire scan sweep."                      0.033,  0.0   1.0    -->
+        <!-- "range_min"       "Minimum reported range (in meters)."                  0.45,   0.0   10.0   -->
+        <!-- "range_max"       "Maximum reported range (in meters)."                  10.0,   0.0   10.0   -->
+        <!-- "output_frame_id" "Output frame_id for the laserscan."                   "camera_depth_frame" -->
+        <!-- "height_min"      "Minimum reported height in world frame (in meters)."  0.05    0.0  10.0    -->
+        <!-- "height_max"      "Maximum reported height in world frame (in meters)."  8.0     1.0  10.0    -->
+        <param name="scan_height" value="250"/>
+        <!--param name="scan_time" value="0.033" /-->
+        <param name="scan_time" value="0.333" />
+        <!--param name="range_min" value="0.3" / -->
+        <param name="range_min" value="0.15" />
+        <!--param name="range_max" type="double" value="4"/-->
+        <param name="range_max"  value="6"/>
+        <param name="output_frame_id" value="camera_depth_frame" />
+        <!--param name="" value="" / -->
+  
+    </node>
+
+    <!-- linobot laser  -->
+    <!--node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_node">
+      <param name="port" value="/dev/linolidar"/>
+      <param name="firmware_version" value="2"/>
+      <param name="frame_id" value="laser"/>
+    </node>
+
+    <node name="base_laser_tf_broadcaster_node" pkg="linorobot" type="base_laser_tf"/>
+    <-->
+
+
+
+
+</launch>
+@

@@ -1,0 +1,14 @@
+
+#Start jbot node
+roaslaunch jbot-kinect-nothrottle.launch
+
+#start laser_scan
+roslaunch kinect-pointcloud_to_laser.launch
+
+#start visual odom /vo
+rtabmap.launch
+
+#start sensor fusion to feed gmapp/rtabmap
+robot_localization-sensor_fusion.launch
+
+

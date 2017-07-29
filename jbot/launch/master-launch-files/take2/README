@@ -1,0 +1,13 @@
+#SLAM
+roscore
+roslaunck bringup.launch
+roslaunch kinect-laser.launch
+roslaunch slaom-onlt.launch
+rosrun teleop
+#On remote
+  rosrun rviz rviz
+#save map
+
+
+#Woring with ROS PCL
+http://apprize.info/programming/ros/9.html

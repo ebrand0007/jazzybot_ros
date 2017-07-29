@@ -1,0 +1,30 @@
+Start the master launc file in this directory
+
+rosbuilder@edslt3:/home/rosbuilder/jazzybot/urdf
+  roslaunch urdf_tutorial display.launch model:=`pwd`/linorobot2jazbot.urdf
+
+
+TODO:
+  add camera link to urdf file
+  add ro launch file
+
+  <launch>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="rob_st_pub" >
+      <remap from="robot_description" to="different_robot_description" />
+      <remap from="joint_states" to="different_joint_states" />
+    </node>
+  </launch>
+  see: http://wiki.ros.org/robot_state_publisher/Tutorials/Using%20the%20robot%20state%20publisher%20on%20your%20own%20robot
+
+  add laser
+  rtabmap
+
+
+Misc help
+List TF Frames
+  rosrun tf view_frames (generates pdf)
+  rosrun tf tf_monitor
+  rosgraph
+
+
+

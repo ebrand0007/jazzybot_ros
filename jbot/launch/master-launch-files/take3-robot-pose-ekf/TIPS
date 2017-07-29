@@ -1,0 +1,10 @@
+#There are multiple ways to set up robot
+- robot state publusher and urdf
+  http://wiki.ros.org/robot_state_publisher/Tutorials/Using%20the%20robot%20state%20publisher%20on%20your%20own%20robot
+
+- remap tf using static-transform
+  (currently doing this)
+
+- robot pose ekf
+  !!Investigate
+  
