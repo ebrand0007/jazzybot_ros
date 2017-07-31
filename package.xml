@@ -1,14 +1,14 @@
 <?xml version="1.0.2"?>
 <package>
-  <name>jbot</name>
+  <name>jazzybot</name>
   <version>1.1.0</version>
-  <description>Two wheel differential drive ROS platform</description>
-  <maintainer email="jimenojmm@gmail.com">t</maintainer>
-  <license>BSD</license>
+  <description>Jazzybot: Two wheel differential drive ROS platform</description>
+  <maintainer email="ebrand0007@gmail.com">t</maintainer>
+  <license>GPL</license>
 
-  <url type="website">http://www.linorobot.org</url>
+  <url type="website">http://www.bramdint.com/jazzybot</url>
 
-   <author email="jimenojmm@gmail.com">Juan Miguel Jimeno</author> 
+   <author email="ebrand0007@gmail.com">Edward Brand</author> 
 
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>geometry_msgs</build_depend>
