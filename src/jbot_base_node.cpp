@@ -81,8 +81,8 @@ void IMUCallback( const sensor_msgs::Imu& imu){
     g_imu_z = imu.angular_velocity.z;
   }
 
-  //g_imu_dt = (current_time - g_last_imu_time).toSec();  //1.1.2
-  //g_last_imu_time = current_time;                       //1.1.2
+  g_imu_dt = (current_time - g_last_imu_time).toSec();  //1.1.2 //get this from the header??
+  g_last_imu_time = current_time;                       //1.1.2
 }
 
 int main(int argc, char** argv){
