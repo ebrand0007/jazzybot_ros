@@ -29,7 +29,11 @@
  
  */
 
-//Version 1.1.1
+/* Version 1.1.2
+ *  commented out all lines that end in 1.1.2 trying to figure out why odom angle is wrong
+*/ 
+  
+
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -77,8 +81,8 @@ void IMUCallback( const sensor_msgs::Imu& imu){
     g_imu_z = imu.angular_velocity.z;
   }
 
-  g_imu_dt = (current_time - g_last_imu_time).toSec();
-  g_last_imu_time = current_time;
+  //g_imu_dt = (current_time - g_last_imu_time).toSec();  //1.1.2
+  //g_last_imu_time = current_time;                       //1.1.2
 }
 
 int main(int argc, char** argv){
@@ -105,10 +109,11 @@ int main(int argc, char** argv){
   ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
   
-  double rate = 10.0;
+  double rate = 10.0; //TODO: this should be a parameter
   double x_pos = 0.0;
   double y_pos = 0.0;
   double theta = 0.0;
+  
   ros::Rate r(rate);
   while(n.ok()){
     ros::spinOnce();
@@ -165,7 +170,7 @@ int main(int argc, char** argv){
     odom.child_frame_id = baselink_frame; //TODO: move
     //linear speed from encoders
     odom.twist.twist.linear.x = linear_velocity_x;
-    odom.twist.twist.linear.y = linear_velocity_y;
+    odom.twist.twist.linear.y = 0.0 //linear_velocity_y; //1.1.2
     odom.twist.twist.linear.z = 0.0;
 
     odom.twist.twist.angular.x = 0.0;
