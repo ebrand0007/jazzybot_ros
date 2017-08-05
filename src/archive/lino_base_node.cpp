@@ -26,13 +26,13 @@
  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
- 
  */
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Vector3.h>
+#include <lino_msgs/Velocities.h>
 #include <sensor_msgs/Imu.h>
 #include <math.h>
 
@@ -47,6 +47,16 @@ ros::Time g_last_loop_time(0.0);
 ros::Time g_last_vel_time(0.0);
 ros::Time g_last_imu_time(0.0);
 
+void velCallbackLino( const lino_msgs::Velocities& vel) {
+  //callback every time the robot's linear velocity is received
+  ros::Time current_time = ros::Time::now();
+
+  g_vel_x = vel.linear_x;
+  g_vel_y = vel.linear_y;
+
+  g_vel_dt = (current_time - g_last_vel_time).toSec();
+  g_last_vel_time = current_time;
+}
 
 void velCallback( const geometry_msgs::Vector3Stamped& vel) {
   //callback every time the robot's linear velocity is received
@@ -57,6 +67,7 @@ void velCallback( const geometry_msgs::Vector3Stamped& vel) {
   g_vel_dt = (current_time - g_last_vel_time).toSec();
   g_last_vel_time = current_time;
 
+
 }
 
 
@@ -65,8 +76,7 @@ void IMUCallback( const sensor_msgs::Imu& imu){
   //callback every time the robot's angular velocity is received
   ros::Time current_time = ros::Time::now();
   //this block is to filter out imu noise
-  //if(imu.angular_velocity.z > -0.03 && imu.angular_velocity.z < 0.03)
-  if(imu.angular_velocity.z > -0.005 && imu.angular_velocity.z < 0)
+  if(imu.angular_velocity.z > -0.03 && imu.angular_velocity.z < 0.03)
   {
     g_imu_z = 0.00;
   }
@@ -83,16 +93,14 @@ int main(int argc, char** argv){
   ros::init(argc, argv, "base_controller");
   ros::NodeHandle n;
   ros::NodeHandle nh_private_("~");
-  tf::TransformBroadcaster odom_broadcaster;
   
   //lauch params
   std::string baselink_frame;
   std::string odom_frame;
   std::string imu_topic;
   std::string vel_topic;
-  
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link");
-  nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom");
+  nh_private_.param<std::string>("odom_frame", odom_frame, "odom");
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
 
@@ -102,7 +110,8 @@ int main(int argc, char** argv){
   ros::Subscriber sub = n.subscribe(vel_topic, 50, velCallback);
   ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
-  
+  tf::TransformBroadcaster odom_broadcaster;
+
   double rate = 10.0;
   double x_pos = 0.0;
   double y_pos = 0.0;
@@ -158,7 +167,7 @@ int main(int argc, char** argv){
     //robot's heading in quaternion
     odom.pose.pose.orientation = odom_quat;
 
-    odom.child_frame_id = baselink_frame; //TODO: move
+    odom.child_frame_id = baselink_frame;
     //linear speed from encoders
     odom.twist.twist.linear.x = linear_velocity_x;
     odom.twist.twist.linear.y = linear_velocity_y;

@@ -26,7 +26,7 @@
  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
- 
+
  */
 
 #include <ros/ros.h>
@@ -48,20 +48,16 @@ ros::Time g_last_vel_time(0.0);
 ros::Time g_last_imu_time(0.0);
 
 
-void velCallback( const geometry_msgs::Vector3Stamped& vel) {
+void vel_callback( const geometry_msgs::Vector3Stamped& vel) {
   //callback every time the robot's linear velocity is received
   ros::Time current_time = ros::Time::now();
-  g_vel_x= vel.vector.x;
-  g_vel_y = vel.vector.y;
-
-  g_vel_dt = (current_time - g_last_vel_time).toSec();
-  g_last_vel_time = current_time;
-
+  g_vel_x = vel.vector.x;
+  g_vel_dt = vel.vector.z;  //TODO: believe dt is incorrect!!!
+  
+  g_last_vel_time = vel.header.stamp;
 }
 
-
-
-void IMUCallback( const sensor_msgs::Imu& imu){
+void imu_callback( const sensor_msgs::Imu& imu){
   //callback every time the robot's angular velocity is received
   ros::Time current_time = ros::Time::now();
   //this block is to filter out imu noise
@@ -74,9 +70,6 @@ void IMUCallback( const sensor_msgs::Imu& imu){
   {
     g_imu_z = imu.angular_velocity.z;
   }
-
-  g_imu_dt = (current_time - g_last_imu_time).toSec();
-  g_last_imu_time = current_time;
 }
 
 int main(int argc, char** argv){
@@ -90,54 +83,58 @@ int main(int argc, char** argv){
   std::string odom_frame;
   std::string imu_topic;
   std::string vel_topic;
-  
+
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link");
   nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom");
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
-  nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
-
-  //ros::Subscriber sub = n.subscribe("raw_vel", 50, velCallback);
-  //ros::Subscriber imu_sub = n.subscribe("imu/data", 50, IMUCallback);
+  nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");  
+ 
+  //ros::Subscriber sub = n.subscribe("raw_vel", 50, vel_callback);
+  //ros::Subscriber imu_sub = n.subscribe("imu/data", 50, imu_callback);
   //ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
   ros::Subscriber sub = n.subscribe(vel_topic, 50, velCallback);
   ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
-  
-  double rate = 10.0;
+
+  double rate = 10.0; //TODO: this should be a parameter
   double x_pos = 0.0;
   double y_pos = 0.0;
   double theta = 0.0;
+
   ros::Rate r(rate);
   while(n.ok()){
     ros::spinOnce();
     ros::Time current_time = ros::Time::now();
 
-    //linear velocity is the linear velocity published from the Teensy board in x axis
-    double linear_velocity_x = g_vel_x;
+    
+    //calculate change in time (dt)
+    double dtt = (current_time - g_last_loop_time).toSec();
 
-    //linear velocity is the linear velocity published from the Teensy board in y axis
-    double linear_velocity_y = g_vel_y;
-
+    //linear velocity is the linear velocity published from the Teensy board(raw_vel)
+    double linear_velocity = g_vel_x;
     //angular velocity is the rotation in Z from imu_filter_madgwick's output
     double angular_velocity = g_imu_z;
 
     //calculate angular displacement  θ = ω * t
-    double delta_theta = angular_velocity * g_imu_dt; //radians
-    double delta_x = (linear_velocity_x * cos(theta) - linear_velocity_y * sin(theta)) * g_vel_dt; //m
-    double delta_y = (linear_velocity_x * sin(theta) + linear_velocity_y * cos(theta)) * g_vel_dt; //m
+    double delta_theta = angular_velocity * dtt; //radians
+    //calculate linear displacement in X axis
+    double delta_x = (linear_velocity * cos(theta)) * g_last_vel_time; //m
+    //calculate linear displacement in Y axis
+    double delta_y = (linear_velocity * sin(theta)) * g_last_vel_time; //m
 
     //calculate current position of the robot
+    //where (x,y) is summation of linear and angular displacement
     x_pos += delta_x;
     y_pos += delta_y;
     theta += delta_theta;
 
-    //calculate robot's heading in quarternion angle
+    //calculate robot's heading in quaternion angle
     //ROS has a function to calculate yaw in quaternion angle
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(theta);
 
     geometry_msgs::TransformStamped odom_trans;
-    odom_trans.header.frame_id = odom_frame;
-    odom_trans.child_frame_id = baselink_frame;
+    odom_trans.header.frame_id = "odom";
+    odom_trans.child_frame_id = "base_link";
     //robot's position in x,y, and z
     odom_trans.transform.translation.x = x_pos;
     odom_trans.transform.translation.y = y_pos;
@@ -148,9 +145,10 @@ int main(int argc, char** argv){
     //publish robot's tf using odom_trans object
     odom_broadcaster.sendTransform(odom_trans);
 
+
     nav_msgs::Odometry odom;
     odom.header.stamp = current_time;
-    odom.header.frame_id = odom_frame;
+    odom.header.frame_id = "odom";
     //robot's position in x,y, and z
     odom.pose.pose.position.x = x_pos;
     odom.pose.pose.position.y = y_pos;
@@ -158,19 +156,16 @@ int main(int argc, char** argv){
     //robot's heading in quaternion
     odom.pose.pose.orientation = odom_quat;
 
-    odom.child_frame_id = baselink_frame; //TODO: move
+    odom.child_frame_id = "base_link";
     //linear speed from encoders
-    odom.twist.twist.linear.x = linear_velocity_x;
-    odom.twist.twist.linear.y = linear_velocity_y;
+    odom.twist.twist.linear.x = linear_velocity;
+    odom.twist.twist.linear.y = 0.0;
     odom.twist.twist.linear.z = 0.0;
 
     odom.twist.twist.angular.x = 0.0;
     odom.twist.twist.angular.y = 0.0;
     //angular speed from IMU
     odom.twist.twist.angular.z = g_imu_z;
-
-    //TODO: include covariance matrix here
-    //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
 
     odom_pub.publish(odom);
 
