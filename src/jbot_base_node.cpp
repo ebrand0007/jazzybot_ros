@@ -127,6 +127,7 @@ int main(int argc, char** argv){
     double delta_y = (linear_velocity_x * sin(theta) + linear_velocity_y * cos(theta)) * g_vel_dt; //m
 
     //calculate current position of the robot
+    //where (x,y) is summation of linear and angular displacement    
     x_pos += delta_x;
     y_pos += delta_y;
     theta += delta_theta;
@@ -148,6 +149,7 @@ int main(int argc, char** argv){
     //publish robot's tf using odom_trans object
     odom_broadcaster.sendTransform(odom_trans);
 
+    
     nav_msgs::Odometry odom;
     odom.header.stamp = current_time;
     odom.header.frame_id = odom_frame;
