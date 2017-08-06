@@ -29,7 +29,7 @@
  
  */
 
-/* Version 1.1.2,1.1.3
+/* Version 1.1.2,1.1.3, 1.1.4
  *  commented out all lines that end in 1.1.2 trying to figure out why odom angle is wrong
 */ 
   
@@ -56,11 +56,15 @@ ros::Time g_last_imu_time(0.0);
 
 void velCallback( const geometry_msgs::Vector3Stamped& vel) {
   //callback every time the robot's linear velocity is received
-  ros::Time current_time = ros::Time::now();
+  
   g_vel_x= vel.vector.x;
   g_vel_y = vel.vector.y;
 
-  g_vel_dt = (current_time - g_last_vel_time).toSec();
+  //TODO: should we be using time from header for current_time or g_last_vel_time??
+  //g_last_vel_time = vel.header.stamp;
+  ros::Time current_time = ros::Time::now();
+  
+  g_vel_dt = (current_time - g_last_vel_time).toSec(); 
   g_last_vel_time = current_time;
 
 }
@@ -110,7 +114,7 @@ int main(int argc, char** argv){
   ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
   
-  double rate = 10.0; //TODO: this should be a parameter
+  double rate = 10.0; //TODO: this should be a parameter: odom_publish_rate
   double x_pos = 0.0;
   double y_pos = 0.0;
   double theta = 0.0;
@@ -175,7 +179,7 @@ int main(int argc, char** argv){
     odom.child_frame_id = baselink_frame; //TODO: move
     //linear speed from encoders
     odom.twist.twist.linear.x = linear_velocity_x;
-    odom.twist.twist.linear.y = 0.0; //linear_velocity_y; //1.1.2
+    odom.twist.twist.linear.y = linear_velocity_y; //1.1.2
     odom.twist.twist.linear.z = 0.0;
 
     odom.twist.twist.angular.x = 0.0;
