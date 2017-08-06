@@ -134,7 +134,7 @@ int main(int argc, char** argv){
     double angular_velocity = g_imu_z;
 
     //calculate angular displacement  θ = ω * t
-    double delta_theta = angular_velocity * dtt //g_imu_dt; //radians
+    double delta_theta = angular_velocity * dtt; //g_imu_dt; //radians
     double delta_x = (linear_velocity_x * cos(theta) - linear_velocity_y * sin(theta)) * g_vel_dt; //m
     double delta_y = (linear_velocity_x * sin(theta) + linear_velocity_y * cos(theta)) * g_vel_dt; //m
 
