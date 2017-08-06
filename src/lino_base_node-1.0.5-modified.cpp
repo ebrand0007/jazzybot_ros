@@ -105,8 +105,7 @@ int main(int argc, char** argv){
   while(n.ok()){
     ros::spinOnce();
     ros::Time current_time = ros::Time::now();
-
-    
+  
     //calculate change in time (dt)
     double dtt = (current_time - g_last_loop_time).toSec();
 

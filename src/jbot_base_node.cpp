@@ -29,7 +29,7 @@
  
  */
 
-/* Version 1.1.2
+/* Version 1.1.2,1.1.3
  *  commented out all lines that end in 1.1.2 trying to figure out why odom angle is wrong
 */ 
   
@@ -80,7 +80,8 @@ void IMUCallback( const sensor_msgs::Imu& imu){
   {
     g_imu_z = imu.angular_velocity.z;
   }
-
+  
+  //Issue is in this block, also releates to delta_theta calculation
   g_imu_dt = (current_time - g_last_imu_time).toSec();  //1.1.2 //get this from the header??
   g_last_imu_time = current_time;                       //1.1.2
 }
@@ -116,9 +117,13 @@ int main(int argc, char** argv){
   
   ros::Rate r(rate);
   while(n.ok()){
+    //see: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
     ros::spinOnce();
     ros::Time current_time = ros::Time::now();
 
+        //calculate change in time (dt)
+    double dtt = (current_time - g_last_loop_time).toSec(); //1.1.2
+    
     //linear velocity is the linear velocity published from the Teensy board in x axis
     double linear_velocity_x = g_vel_x;
 
@@ -129,7 +134,7 @@ int main(int argc, char** argv){
     double angular_velocity = g_imu_z;
 
     //calculate angular displacement  θ = ω * t
-    double delta_theta = angular_velocity * g_imu_dt; //radians
+    double delta_theta = angular_velocity * dtt //g_imu_dt; //radians
     double delta_x = (linear_velocity_x * cos(theta) - linear_velocity_y * sin(theta)) * g_vel_dt; //m
     double delta_y = (linear_velocity_x * sin(theta) + linear_velocity_y * cos(theta)) * g_vel_dt; //m
 
