@@ -147,8 +147,10 @@ include_directories(
 # )
 
 
-add_executable(jbot_base_node src/jbot_base_node.cpp)
-target_link_libraries(jbot_base_node ${catkin_LIBRARIES})
+add_executable(jbot_base2_node src/jbot_base2_node.cpp)
+add_executable(jbot_odom src/jbot_odom.cpp)
+target_link_libraries(jbot_base2_node  ${catkin_LIBRARIES})
+target_link_libraries(jbot_odom  ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -166,7 +168,7 @@ target_link_libraries(jbot_base_node ${catkin_LIBRARIES})
 
 ## Mark executables and/or libraries for installation
 #install(TARGETS jbot jbot_node 
-install(TARGETS  jbot_base_node 
+install(TARGETS  jbot_base2_node jbot_odom
    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
