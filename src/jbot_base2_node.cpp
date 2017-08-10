@@ -46,9 +46,12 @@ const double gear_ratio=17.737;             // motor's gear ratio
 const double wheel_diameter=0.2286;         // wheel's diameter in meters 9"
 const double wheel_width=0.0762;            // wheel's width in meters 3"
 const double track_width=0.5715;            // width of the plate you are using - 22.5"?? between tires
-const double ticks_per_wheel_rotation = encoder_pulse * gear_ratio; 
-                                            // ^ number of encoder tics per wheel rotation 
-
+// calculate number of encoder tics per wheel rotation
+const double ticks_per_wheel_rotation = encoder_pulse * gear_ratio;                                 
+//calculate 1 tick=how many radians
+const double one_encodertick_in_radians = two_pi / ticks_per_wheel_rotation;
+  //radian(r) is the radius of a circle.   2 pi r in radians = 360 deg
+  
 const char *prog_name="jbot_base2_node";
 const char *prog_ver="2.0.0";
 
