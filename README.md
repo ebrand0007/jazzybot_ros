@@ -8,11 +8,14 @@ http://linorobot.org
 
 building:
 
+cd /tmp
+https://github.com/ebrand0007/jazzybot_ros.git
 mkdir catkin_ws
 cd catkin_ws
 catkin_init_workspace
 
-
+Run this script:
+----------------------
 #!/bin/sh
 SOURCE=/tmp/jbot/jazzybot_ros/
 DEST=src/jazzybot/.

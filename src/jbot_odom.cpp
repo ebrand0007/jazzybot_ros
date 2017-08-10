@@ -189,7 +189,8 @@ int main(int argc, char** argv){
 
     //TODO: include covariance matrix here
     //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
-
+    // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/
+    
     odom_pub.publish(odom);
 
     g_last_loop_time = current_time;
