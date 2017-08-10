@@ -29,6 +29,7 @@
 //encoder Messagges
 #include <ros_arduino_msgs/Encoders.h>
 
+#define DEBUG 0
 
 #define pi 3.1415926 
 #define two_pi 6.2831853
@@ -74,9 +75,6 @@ std::string encoder_topic;
 //std::string imu_topic;
 //std::string vel_topic;
 
-//time stamps for message reads/writes
-double g_encoder_dt;
-//ros::Time g_encoder_lasttime(0.0);
 //ros::Time g_last_loop_time(0.0); //time stamp for main loop
 
 //prototypes
@@ -123,14 +121,17 @@ void setup()
   ROS_INFO_STREAM(buffer);
   
   //Debugging
-  double one_rpm_in_tics_per_sec=ticks_per_wheel_rotation/60;
-  sprintf (buffer, "%s::*One rpm in ticks/second: %.4f",prog_name,one_rpm_in_tics_per_sec);
-  ROS_INFO_STREAM(buffer);
-  sprintf (buffer, "%s::*10 rpms in ticks/second : %.4f",prog_name,one_rpm_in_tics_per_sec*10);
-  ROS_INFO_STREAM(buffer);
+  if ( DEBUG) 
+  {
+    double one_rpm_in_tics_per_sec=ticks_per_wheel_rotation/60;
+    sprintf (buffer, "%s::*One rpm in ticks/second: %.4f",prog_name,one_rpm_in_tics_per_sec);
+    ROS_INFO_STREAM(buffer);
+    sprintf (buffer, "%s::*10 rpms in ticks/second : %.4f",prog_name,one_rpm_in_tics_per_sec*10);
+    ROS_INFO_STREAM(buffer);
 
-  //sprintf (buffer, "%s:: : %s",prog_name,);
-  //ROS_INFO_STREAM(buffer);  
+    //sprintf (buffer, "%s:: : %s",prog_name,);
+    //ROS_INFO_STREAM(buffer);  
+  }
 }
 
 
@@ -138,12 +139,6 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
 {
   // this function calculates the motor's RPM based on encoder ticks and delta time
   char buffer[80]; //string buffer for info logging
-  
-  //convert the time from ROS::time::now() seconds to minutes
-  //#double dt_minutes = dt_seconds * 3500; //TODO aint right shold be 60
-  //double dt_minutes = dt_seconds * 6000; //rpm=110 shold be 60
-  //double dt_minutes = dt_seconds * 10000; //goiung the wrong way rpm=182 shold be 60
- 
   double delta_time_motor=current_time - mot->encoder_lasttime;
   mot->encoder_lasttime=current_time;
  
@@ -154,38 +149,37 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
   
   //calculate wheel's speed (RPM)
   mot->current_rpm = (delta_ticks_per_min/ticks_per_wheel_rotation);
-  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio * delta_time_motor));
-  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * delta_time_motor;
-  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
-  //mot->current_rpm = double((delta_ticks*60*1000) / double(encoder_pulse * gear_ratio) * dt_seconds);
   mot->radians_per_sec = (mot->current_rpm * two_pi)/60;
   mot->previous_encoder_ticks = current_encoder_ticks;
   
   //debug code:
   if (delta_ticks != 0.0) 
   {
-    ROS_INFO_STREAM("Motor Changed");
-    sprintf (buffer, "  ***dt_seconds: %15.8f",delta_time_motor);
-    //#sprintf (buffer, "  ***dt_seconds: %15.8f",dt_seconds);
-    ROS_INFO_STREAM(buffer); 
-    
-    //sprintf (buffer, "  ***dt_minutes: %15.8f",dt_minutes);
-    //ROS_INFO_STREAM(buffer); 
-    
-    sprintf (buffer, "  *delta_ticks: %15.4f",delta_ticks);
-    ROS_INFO_STREAM(buffer);
-    
-    sprintf (buffer, "  *delta_ticks_per_sec: %15.4f",delta_ticks_per_sec);
-    ROS_INFO_STREAM(buffer);
-    /* 
-    * double rpms= (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
-    * sprintf (buffer, "  *rpms: %15.4f",rpms);
-    * ROS_INFO_STREAM(buffer);
-    * 
-    */ 
-    //double rpms= (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
-    sprintf (buffer, "  *rpms: %15.4f",mot->current_rpm);
-    ROS_INFO_STREAM(buffer);
+    if ( DEBUG) 
+    {
+      ROS_INFO_STREAM("Motor Changed");
+      sprintf (buffer, "  ***dt_seconds: %15.8f",delta_time_motor);
+      //#sprintf (buffer, "  ***dt_seconds: %15.8f",dt_seconds);
+      ROS_INFO_STREAM(buffer); 
+      
+      //sprintf (buffer, "  ***dt_minutes: %15.8f",dt_minutes);
+      //ROS_INFO_STREAM(buffer); 
+      
+      sprintf (buffer, "  *delta_ticks: %15.4f",delta_ticks);
+      ROS_INFO_STREAM(buffer);
+      
+      sprintf (buffer, "  *delta_ticks_per_sec: %15.4f",delta_ticks_per_sec);
+      ROS_INFO_STREAM(buffer);
+      /* 
+      * double rpms= (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
+      * sprintf (buffer, "  *rpms: %15.4f",rpms);
+      * ROS_INFO_STREAM(buffer);
+      * 
+      */ 
+      //double rpms= (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
+      sprintf (buffer, "  *rpms: %15.4f",mot->current_rpm);
+      ROS_INFO_STREAM(buffer);
+    }
 
   }
  
@@ -196,39 +190,15 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
 void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
   //callback every time the robot's wheel encoder message received
   
-  //ros::Time current_time = ros::Time::now(); //TODO: alternately use encoder_msg.header.stamp??
+  //ros::Time current_time = ros::Time::now(); //alternately use encoder_msg.header.stamp
   ros::Time current_time = encoder_msg.header.stamp;
   //read the encoder tics
   long left_encoder_ticks_current= encoder_msg.left;
   long right_encoder_ticks_current = encoder_msg.right;
   
-  
-  
-  //calculate delta time
-  //#g_encoder_dt = ( current_time - g_encoder_lasttime).toSec(); //returns a double like 0.10
-  //#g_encoder_lasttime =  current_time;
-  
-  //Set current_rpm and radians_per_sec in motor struct
-  //  also sets motor->previous_encoder_ticks
   calculate_motor_rpm_and_radian(&left_motor, left_encoder_ticks_current, current_time.toSec());
   calculate_motor_rpm_and_radian(&right_motor, right_encoder_ticks_current, current_time.toSec());
-  
-//  calculate_motor_rpm_and_radian(&left_motor, left_encoder_ticks_current, g_encoder_dt);
-//  calculate_motor_rpm_and_radian(&right_motor, right_encoder_ticks_current, g_encoder_dt);
-  
-  //Debugging
-  char buffer[80]; //string buffer for info logging
-  /*sprintf (buffer, "  Right encoder_msg: %d", right_motor.previous_encoder_ticks); //right_encoder_ticks_current);
-  ROS_INFO_STREAM(buffer);
-  sprintf (buffer, "  Left encoder_msg: %d", left_motor.previous_encoder_ticks); //left_encoder_ticks_current);
-  ROS_INFO_STREAM(buffer);  
-  sprintf (buffer, "  Time Now: %15.4f",current_time.toSec());
-  ROS_INFO_STREAM(buffer); 
-  sprintf (buffer, "  Delta time: %10.4f", g_encoder_dt ); //right_encoder_ticks_current);
-  ROS_INFO_STREAM(buffer); 
-  */
-
-  
+    
 }
 
 
@@ -252,10 +222,7 @@ int main(int argc, char** argv){
   
   //ros Subscribers 
   ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback);
-  
-
   //ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
-  
   //Ros publishers
   //ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
   
@@ -268,13 +235,7 @@ int main(int argc, char** argv){
     //see: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
     ros::spinOnce();
     ros::Time main_current_time = ros::Time::now(); 
-    
-    //debugging info
-    //sprintf (buffer, "Motor Left RPM: %15.4f", left_motor.current_rpm);
-    //ROS_INFO_STREAM(buffer);
-    //sprintf (buffer, "Motor Right RPM: %15.4f", right_motor.current_rpm);
-    //ROS_INFO_STREAM(buffer);
-      
+        
     //#g_last_loop_time = main_current_time;
     r.sleep();
   }
