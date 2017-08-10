@@ -38,18 +38,15 @@
 #define k_i 0.0 // I constant
 #define k_d 1.0 // D constant
 //define your motors' specs here
-const double max_rpm=330; //motor's maximum RPM
-const double encoder_pulse=8;               //encoder's number of ticks per revolution 
-const double gear_ratio=17.737;             //motor's gear ratio
-//ticsPerWheelRotation=141.9ish;            //ticsPerMotorRev*gearRatio;
+const double max_rpm=1241; //motor's maximum RPM(1241)?? or Wheel Max RPM(70ish)? How to set?? Was 330
+const double encoder_pulse=8;               // encoder's number of ticks per revolution 
+const double gear_ratio=17.737;             // motor's gear ratio
 //define your robot base's specs here
-const double wheel_diameter=0.2286;         //wheel's diameter in meters 9"
-const double wheel_width=0.0762;            //wheel's width in meters 3"
-const double track_width=0.5715;     // width of the plate you are using - 22.5"?? between tires
-                                            //number of encoder tics per wheel rotation 
+const double wheel_diameter=0.2286;         // wheel's diameter in meters 9"
+const double wheel_width=0.0762;            // wheel's width in meters 3"
+const double track_width=0.5715;            // width of the plate you are using - 22.5"?? between tires
 const double ticks_per_wheel_rotation = encoder_pulse * gear_ratio; 
-
-
+                                            // ^ number of encoder tics per wheel rotation 
 
 const char *prog_name="jbot_base2_node";
 const char *prog_ver="2.0.0";
@@ -89,7 +86,8 @@ void init_motor(Motor * mot)
 {
   mot->previous_pid_error=0; 
   mot->total_pid_error=0;  
-  mot->previous_encoder_ticks=0;
+  mot->previous_encoder_ticks=0;  //TODO: should read this once from the encoder header
+  mot->encoder_lasttime=ros::Time::now().toSec(); //TODO: should read this once from the encoder header
   mot->current_rpm=0;
   mot->required_rpm=0;
   mot->pwm=0;
@@ -101,6 +99,7 @@ void setup()
   //init motors
   init_motor(&left_motor);
   init_motor(&right_motor);  
+
   char buffer[80]; //string buffer for info logging
   
   //Print info
@@ -135,22 +134,29 @@ void setup()
 }
 
 
-void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, double dt_seconds )
+void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, double current_time )
 {
   // this function calculates the motor's RPM based on encoder ticks and delta time
   char buffer[80]; //string buffer for info logging
   
   //convert the time from ROS::time::now() seconds to minutes
-  double dt_minutes = dt_seconds * 3500; //TODO aint right shold be 60
+  //#double dt_minutes = dt_seconds * 3500; //TODO aint right shold be 60
   //double dt_minutes = dt_seconds * 6000; //rpm=110 shold be 60
   //double dt_minutes = dt_seconds * 10000; //goiung the wrong way rpm=182 shold be 60
  
+  double delta_time_motor=current_time - mot->encoder_lasttime;
+  mot->encoder_lasttime=current_time;
+ 
   //calculate change in number of ticks from the encoder
   double delta_ticks = current_encoder_ticks - mot->previous_encoder_ticks;
-  double delta_ticks_per_sec=(delta_ticks * delta_ticks)/60;
+  double delta_ticks_per_sec=(delta_ticks / delta_time_motor);
+  double delta_ticks_per_min=delta_ticks_per_sec*60;
   
   //calculate wheel's speed (RPM)
-  mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
+  mot->current_rpm = (delta_ticks_per_min/ticks_per_wheel_rotation);
+  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio * delta_time_motor));
+  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * delta_time_motor;
+  //#mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
   //mot->current_rpm = double((delta_ticks*60*1000) / double(encoder_pulse * gear_ratio) * dt_seconds);
   mot->radians_per_sec = (mot->current_rpm * two_pi)/60;
   mot->previous_encoder_ticks = current_encoder_ticks;
@@ -159,7 +165,8 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
   if (delta_ticks != 0.0) 
   {
     ROS_INFO_STREAM("Motor Changed");
-    sprintf (buffer, "  ***dt_seconds: %15.8f",dt_seconds);
+    sprintf (buffer, "  ***dt_seconds: %15.8f",delta_time_motor);
+    //#sprintf (buffer, "  ***dt_seconds: %15.8f",dt_seconds);
     ROS_INFO_STREAM(buffer); 
     
     //sprintf (buffer, "  ***dt_minutes: %15.8f",dt_minutes);
@@ -195,14 +202,19 @@ void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
   long left_encoder_ticks_current= encoder_msg.left;
   long right_encoder_ticks_current = encoder_msg.right;
   
+  
+  
   //calculate delta time
-  g_encoder_dt = ( current_time - g_encoder_lasttime).toSec(); //returns a double like 0.10
-  g_encoder_lasttime =  current_time;
+  //#g_encoder_dt = ( current_time - g_encoder_lasttime).toSec(); //returns a double like 0.10
+  //#g_encoder_lasttime =  current_time;
   
   //Set current_rpm and radians_per_sec in motor struct
   //  also sets motor->previous_encoder_ticks
-  calculate_motor_rpm_and_radian(&left_motor, left_encoder_ticks_current, g_encoder_dt);
-  calculate_motor_rpm_and_radian(&right_motor, right_encoder_ticks_current, g_encoder_dt);
+  calculate_motor_rpm_and_radian(&left_motor, left_encoder_ticks_current, current_time.toSec());
+  calculate_motor_rpm_and_radian(&right_motor, right_encoder_ticks_current, current_time.toSec());
+  
+//  calculate_motor_rpm_and_radian(&left_motor, left_encoder_ticks_current, g_encoder_dt);
+//  calculate_motor_rpm_and_radian(&right_motor, right_encoder_ticks_current, g_encoder_dt);
   
   //Debugging
   char buffer[80]; //string buffer for info logging
@@ -263,7 +275,7 @@ int main(int argc, char** argv){
     //sprintf (buffer, "Motor Right RPM: %15.4f", right_motor.current_rpm);
     //ROS_INFO_STREAM(buffer);
       
-    g_last_loop_time = main_current_time;
+    //#g_last_loop_time = main_current_time;
     r.sleep();
   }
 }
