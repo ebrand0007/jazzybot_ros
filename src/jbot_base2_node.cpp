@@ -38,14 +38,17 @@
 #define k_p 0.4 // P constant
 #define k_i 0.0 // I constant
 #define k_d 1.0 // D constant
+
 //define your motors' specs here
 const double max_rpm=1241; //motor's maximum RPM(1241)?? or Wheel Max RPM(70ish)? How to set?? Was 330
 const double encoder_pulse=8;               // encoder's number of ticks per revolution 
 const double gear_ratio=17.737;             // motor's gear ratio
+
 //define your robot base's specs here
 const double wheel_diameter=0.2286;         // wheel's diameter in meters 9"
 const double wheel_width=0.0762;            // wheel's width in meters 3"
 const double track_width=0.5715;            // width of the plate you are using - 22.5"?? between tires
+
 // calculate number of encoder tics per wheel rotation
 const double ticks_per_wheel_rotation = encoder_pulse * gear_ratio;                                 
 //calculate 1 tick=how many radians
@@ -72,13 +75,15 @@ Motor left_motor;
 Motor right_motor;
 
 //ros launch params definitions
-std::string baselink_frame;
-std::string odom_frame;
-std::string encoder_topic;
-//std::string imu_topic;
-//std::string vel_topic;
+std::string baselink_frame; //TF base frame for robot usually:baselink_frame or base_link
+std::string odom_frame; // to publish
+std::string vel_topic;  //to publish
+std::string encoder_topic; //to subscribe to
+std::string imu_topic;  //to subscribe to
+//TODO: joint states
 
-//ros::Time g_last_loop_time(0.0); //time stamp for main loop
+
+
 
 //prototypes
 
@@ -205,6 +210,7 @@ void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
 }
 
 
+ros::Time g_last_loop_time(0.0); //time stamp for main loop
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "jbot_base_controller");
@@ -218,17 +224,19 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link2");
   nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom2");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
-  //nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
+  nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
+  
+  
   
   setup();
   
-  //ros Subscribers 
+  //ROS Subscribers 
   ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback);
   //ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
-  //Ros publishers
-  //ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
   
+  //Ros publishers
+  ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
 
   double rate = 10.0; //TODO: this should be a parameter: odom_publish_rate
   
@@ -239,7 +247,7 @@ int main(int argc, char** argv){
     ros::spinOnce();
     ros::Time main_current_time = ros::Time::now(); 
         
-    //#g_last_loop_time = main_current_time;
+    g_last_loop_time = main_current_time;
     r.sleep();
   }
 }
