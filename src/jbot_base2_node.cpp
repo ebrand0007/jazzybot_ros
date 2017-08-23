@@ -26,6 +26,10 @@
 #include <geometry_msgs/Vector3.h>
 #include <math.h>
 
+//covariance matrix https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
+#include <boost/assign.hpp>
+#include <boost/array.hpp>
+
 //encoder Messagges
 #include <ros_arduino_msgs/Encoders.h>
 
@@ -82,8 +86,14 @@ std::string encoder_topic; //to subscribe to
 std::string imu_topic;  //to subscribe to
 //TODO: joint states
 
+//odom calc values
+double x = 0.0;
+double y = 0.0;
+double th = 0.0;
 
-
+double vx = 0.1;
+double vy = -0.1;
+double vth = 0.1;
 
 //prototypes
 
@@ -236,7 +246,7 @@ int main(int argc, char** argv){
   //ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   
   //Ros publishers
-  ros::Publisher odom_pub = n.advertise<nav_msgs::Odometry>(odom_frame, 50);
+  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, 50);
 
   double rate = 10.0; //TODO: this should be a parameter: odom_publish_rate
   
@@ -246,6 +256,102 @@ int main(int argc, char** argv){
     //see: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
     ros::spinOnce();
     ros::Time main_current_time = ros::Time::now(); 
+    
+    
+    /*************************/
+    //compute odometry in a typical way given the velocities of the robot
+    double dt = (main_current_time - g_last_loop_time).toSec();
+    double delta_x = (vx * cos(th) - vy * sin(th)) * dt;
+    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;
+    double delta_th = vth * dt;
+    
+    x += delta_x;
+    y += delta_y;
+    th += delta_th;
+    
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
+    
+    //first, we'll publish the transform over tf
+    geometry_msgs::TransformStamped odom_trans;
+    odom_trans.header.stamp = main_current_time;
+    odom_trans.header.frame_id = odom_frame;
+    odom_trans.child_frame_id = baselink_frame;
+    
+    odom_trans.transform.translation.x = x;
+    odom_trans.transform.translation.y = y;
+    odom_trans.transform.translation.z = 0.0;
+    odom_trans.transform.rotation = odom_quat;
+    
+    //send the transform
+    odom_broadcaster.sendTransform(odom_trans);
+    
+    //next, we'll publish the odometry message over ROS
+    nav_msgs::Odometry odom;
+    odom.header.stamp = main_current_time;
+    odom.header.frame_id = odom_frame;
+    
+    //set the position
+    odom.pose.pose.position.x = x;
+    odom.pose.pose.position.y = y;
+    odom.pose.pose.position.z = 0.0;
+    odom.pose.pose.orientation = odom_quat;
+    
+    //set the velocity
+    odom.child_frame_id = baselink_frame;
+    odom.twist.twist.linear.x = vx;
+    odom.twist.twist.linear.y = vy;
+    odom.twist.twist.angular.z = vth;
+    
+    
+    //TODO: include covariance matrix here
+    //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
+    // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/\
+    
+    
+    odom.twist.covariance = 
+    boost::array<double, 36>{{1e-3, 0, 0, 0, 0, 0, 
+      0, 1e-3, 0, 0, 0, 0,
+      0, 0, 1e6, 0, 0, 0,
+      0, 0, 0, 1e6, 0, 0,
+      0, 0, 0, 0, 1e6, 0,
+      0, 0, 0, 0, 0, 1e-3}};
+    
+          
+      /* https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
+      odom.pose.covariance = boost::assign::list_of
+      (static_cast<double>(pose_cov_list[0])) (0)  (0)  (0)  (0)  (0)
+      (0)  (static_cast<double>(pose_cov_list[1])) (0)  (0)  (0)  (0)
+      (0)  (0)  (static_cast<double>(pose_cov_list[2])) (0)  (0)  (0)
+      (0)  (0)  (0)  (static_cast<double>(pose_cov_list[3])) (0)  (0)
+      (0)  (0)  (0)  (0)  (static_cast<double>(pose_cov_list[4])) (0)
+      (0)  (0)  (0)  (0)  (0)  (static_cast<double>(pose_cov_list[5]));
+      
+      odom.twist.twist.linear.y  = 0;
+      odom.twist.twist.linear.z  = 0;
+      odom.twist.twist.angular.x = 0;
+      odom.twist.twist.angular.y = 0;
+      
+      odom.twist.covariance = boost::assign::list_of
+      (static_cast<double>(twist_cov_list[0])) (0)  (0)  (0)  (0)  (0)
+      (0)  (static_cast<double>(twist_cov_list[1])) (0)  (0)  (0)  (0)
+      (0)  (0)  (static_cast<double>(twist_cov_list[2])) (0)  (0)  (0)
+      (0)  (0)  (0)  (static_cast<double>(twist_cov_list[3])) (0)  (0)
+      (0)  (0)  (0)  (0)  (static_cast<double>(twist_cov_list[4])) (0)
+      (0) (0) (0) (0) (0) (static_cast<double>(twist_cov_list[5]));
+      
+      */
+    
+    //publish the message
+    odom_pub.publish(odom);
+    
+    
+    //TODO: include covariance matrix here
+    //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
+    // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/
+    
+    /**********************************/
+    
         
     g_last_loop_time = main_current_time;
     r.sleep();
