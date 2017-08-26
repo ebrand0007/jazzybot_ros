@@ -72,6 +72,7 @@ typedef struct
   double required_rpm;//desired speed of the motor 
   int pwm;//desired speed of the motor mapped to PWM
   double radians_per_sec; // speed of the motor in radians per sec = rpm * two_pi/60
+  double linear_vel; //distance traveled in meters
 }
 Motor;
 //create a Motor object
@@ -83,17 +84,18 @@ std::string baselink_frame; //TF base frame for robot usually:baselink_frame or 
 std::string odom_frame; // to publish
 std::string vel_topic;  //to publish
 std::string encoder_topic; //to subscribe to
+int odom_publish_rate = 50; // pub rate for odom
 std::string imu_topic;  //to subscribe to
 //TODO: joint states
 
-//odom calc values
+//odom pos values
 double x = 0.0;
 double y = 0.0;
 double th = 0.0;
-
-double vx = 0.1;
-double vy = -0.1;
-double vth = 0.1;
+//odom velocities
+double vx = 0;
+double vy = 0;
+double vth = 0.0;
 
 //prototypes
 
@@ -108,6 +110,7 @@ void init_motor(Motor * mot)
   mot->required_rpm=0;
   mot->pwm=0;
   mot->radians_per_sec=0;
+  mot->linear_vel=0;
 }
 
 void setup()
@@ -168,6 +171,8 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
   //calculate wheel's speed (RPM)
   mot->current_rpm = (delta_ticks_per_min/ticks_per_wheel_rotation);
   mot->radians_per_sec = (mot->current_rpm * two_pi)/60;
+  //mot->linear_vel= (mot->radians_per_sec * (wheel_diameter * pi)); //TODO: verify calculation. 
+  mot->linear_vel= ((mot->current_rpm /60) * (wheel_diameter * pi)); //convert rpms to sec
   mot->previous_encoder_ticks = current_encoder_ticks;
   
   //debug code:
@@ -197,7 +202,12 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
       //double rpms= (delta_ticks / double(encoder_pulse * gear_ratio)) * dt_minutes;
       sprintf (buffer, "  *rpms: %15.4f",mot->current_rpm);
       ROS_INFO_STREAM(buffer);
+      
+      sprintf (buffer, "  *radians_per_sec: %15.4f",mot->radians_per_sec);
+      ROS_INFO_STREAM(buffer);
     }
+    sprintf (buffer, "  *linear_vel: %15.4f",mot->linear_vel);
+    ROS_INFO_STREAM(buffer);
 
   }
  
@@ -234,6 +244,7 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link2");
   nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom2");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
+  nh_private_.param("odom_publish_rate", odom_publish_rate, 50); //odom pubish rate
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
@@ -246,9 +257,9 @@ int main(int argc, char** argv){
   //ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
   
   //Ros publishers
-  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, 50);
+  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
 
-  double rate = 10.0; //TODO: this should be a parameter: odom_publish_rate
+  double rate = odom_publish_rate; //launch parameter: odom_publish_rate
   
   
   ros::Rate r(rate); 
@@ -261,13 +272,21 @@ int main(int argc, char** argv){
     /*************************/
     //compute odometry in a typical way given the velocities of the robot
     double dt = (main_current_time - g_last_loop_time).toSec();
-    double delta_x = (vx * cos(th) - vy * sin(th)) * dt;
-    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;
-    double delta_th = vth * dt;
+    
+    //double delta_x = (vx * cos(th) - vy * sin(th)) * dt;
+    //double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  //TODO: motors cant move in y direction. should this always be 0?
+    
+    vx = (left_motor.linear_vel + right_motor.linear_vel)/2; //Ave vel in x direction
+    vy = 0; //wheels  cant roll  in y direction
+    vth = (right_motor.linear_vel - left_motor.linear_vel)/track_width;  //dev 10?
+    
+    double delta_x = (vx* cos(th) - vy * sin(th)) * dt;  
+    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  //TODO: motors cant move in y direction. should this always be 0?
+    double delta_th = vth * dt; 
     
     x += delta_x;
     y += delta_y;
-    th += delta_th;
+    th += delta_th;  //theta is yay, rotation around z axix
     
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
@@ -301,7 +320,7 @@ int main(int argc, char** argv){
     odom.child_frame_id = baselink_frame;
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
-    odom.twist.twist.angular.z = vth;
+    odom.twist.twist.angular.z = vth; 
     
     
     //TODO: include covariance matrix here
