@@ -205,9 +205,11 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
       
       sprintf (buffer, "  *radians_per_sec: %15.4f",mot->radians_per_sec);
       ROS_INFO_STREAM(buffer);
+      
+      sprintf (buffer, "  *linear_vel: %15.4f",mot->linear_vel);
+      ROS_INFO_STREAM(buffer);
     }
-    sprintf (buffer, "  *linear_vel: %15.4f",mot->linear_vel);
-    ROS_INFO_STREAM(buffer);
+
 
   }
  
@@ -273,12 +275,9 @@ int main(int argc, char** argv){
     //compute odometry in a typical way given the velocities of the robot
     double dt = (main_current_time - g_last_loop_time).toSec();
     
-    //double delta_x = (vx * cos(th) - vy * sin(th)) * dt;
-    //double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  //TODO: motors cant move in y direction. should this always be 0?
-    
     vx = (left_motor.linear_vel + right_motor.linear_vel)/2; //Ave vel in x direction
     vy = 0; //wheels  cant roll  in y direction
-    vth = (right_motor.linear_vel - left_motor.linear_vel)/track_width;  //dev 10?
+    vth = (right_motor.linear_vel - left_motor.linear_vel)/(track_width+wheel_width);  //subject to lots of wheel slippage
     
     double delta_x = (vx* cos(th) - vy * sin(th)) * dt;  
     double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  //TODO: motors cant move in y direction. should this always be 0?
@@ -310,32 +309,49 @@ int main(int argc, char** argv){
     odom.header.stamp = main_current_time;
     odom.header.frame_id = odom_frame;
     
-    //set the position
+    //set the pose position
     odom.pose.pose.position.x = x;
     odom.pose.pose.position.y = y;
     odom.pose.pose.position.z = 0.0;
-    odom.pose.pose.orientation = odom_quat;
+    odom.pose.pose.orientation = odom_quat;    
+    //Pose Covariance matrix
+    odom.pose.covariance[0]  = 0.01;
+    odom.pose.covariance[7]  = 0.01;
+    odom.pose.covariance[14] = 99999;
+    odom.pose.covariance[21] = 99999;
+    odom.pose.covariance[28] = 99999;
+    odom.pose.covariance[35] = 0.01;
     
-    //set the velocity
+    //set the velocity twist
     odom.child_frame_id = baselink_frame;
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
-    odom.twist.twist.angular.z = vth; 
+    odom.twist.twist.angular.z = vth;   
+    //Twist Covariance matrix
+    odom.twist.covariance[0]  = 0.001;
+    odom.twist.covariance[7]  = 0.001;
+    odom.twist.covariance[14] = 99999;
+    odom.twist.covariance[21] = 99999;
+    odom.twist.covariance[28] = 99999;
+    odom.twist.covariance[35] = 0.001;
     
     
-    //TODO: include covariance matrix here
-    //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
+    // include covariance matrix here
+    // See https://answers.ros.org/question/51007/covariance-matrix/
+    // and https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
     // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/\
+    // and https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
     
     
-    odom.twist.covariance = 
+    
+    /*odom.twist.covariance = 
     boost::array<double, 36>{{1e-3, 0, 0, 0, 0, 0, 
       0, 1e-3, 0, 0, 0, 0,
       0, 0, 1e6, 0, 0, 0,
       0, 0, 0, 1e6, 0, 0,
       0, 0, 0, 0, 1e6, 0,
       0, 0, 0, 0, 0, 1e-3}};
-    
+    */
           
       /* https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
       odom.pose.covariance = boost::assign::list_of
