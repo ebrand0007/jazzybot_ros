@@ -171,7 +171,6 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
   //calculate wheel's speed (RPM)
   mot->current_rpm = (delta_ticks_per_min/ticks_per_wheel_rotation);
   mot->radians_per_sec = (mot->current_rpm * two_pi)/60;
-  //mot->linear_vel= (mot->radians_per_sec * (wheel_diameter * pi)); //TODO: verify calculation. 
   mot->linear_vel= ((mot->current_rpm /60) * (wheel_diameter * pi)); //convert rpms to sec
   mot->previous_encoder_ticks = current_encoder_ticks;
   
@@ -280,7 +279,7 @@ int main(int argc, char** argv){
     vth = (right_motor.linear_vel - left_motor.linear_vel)/(track_width+wheel_width);  //subject to lots of wheel slippage
     
     double delta_x = (vx* cos(th) - vy * sin(th)) * dt;  
-    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  //TODO: motors cant move in y direction. should this always be 0?
+    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  
     double delta_th = vth * dt; 
     
     x += delta_x;
@@ -336,57 +335,15 @@ int main(int argc, char** argv){
     odom.twist.covariance[35] = 0.001;
     
     
-    // include covariance matrix here
+    // covariance matrix revferances here
     // See https://answers.ros.org/question/51007/covariance-matrix/
     // and https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
     // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/\
     // and https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
     
     
-    
-    /*odom.twist.covariance = 
-    boost::array<double, 36>{{1e-3, 0, 0, 0, 0, 0, 
-      0, 1e-3, 0, 0, 0, 0,
-      0, 0, 1e6, 0, 0, 0,
-      0, 0, 0, 1e6, 0, 0,
-      0, 0, 0, 0, 1e6, 0,
-      0, 0, 0, 0, 0, 1e-3}};
-    */
-          
-      /* https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
-      odom.pose.covariance = boost::assign::list_of
-      (static_cast<double>(pose_cov_list[0])) (0)  (0)  (0)  (0)  (0)
-      (0)  (static_cast<double>(pose_cov_list[1])) (0)  (0)  (0)  (0)
-      (0)  (0)  (static_cast<double>(pose_cov_list[2])) (0)  (0)  (0)
-      (0)  (0)  (0)  (static_cast<double>(pose_cov_list[3])) (0)  (0)
-      (0)  (0)  (0)  (0)  (static_cast<double>(pose_cov_list[4])) (0)
-      (0)  (0)  (0)  (0)  (0)  (static_cast<double>(pose_cov_list[5]));
-      
-      odom.twist.twist.linear.y  = 0;
-      odom.twist.twist.linear.z  = 0;
-      odom.twist.twist.angular.x = 0;
-      odom.twist.twist.angular.y = 0;
-      
-      odom.twist.covariance = boost::assign::list_of
-      (static_cast<double>(twist_cov_list[0])) (0)  (0)  (0)  (0)  (0)
-      (0)  (static_cast<double>(twist_cov_list[1])) (0)  (0)  (0)  (0)
-      (0)  (0)  (static_cast<double>(twist_cov_list[2])) (0)  (0)  (0)
-      (0)  (0)  (0)  (static_cast<double>(twist_cov_list[3])) (0)  (0)
-      (0)  (0)  (0)  (0)  (static_cast<double>(twist_cov_list[4])) (0)
-      (0) (0) (0) (0) (0) (static_cast<double>(twist_cov_list[5]));
-      
-      */
-    
     //publish the message
     odom_pub.publish(odom);
-    
-    
-    //TODO: include covariance matrix here
-    //See: https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
-    // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/
-    
-    /**********************************/
-    
         
     g_last_loop_time = main_current_time;
     r.sleep();
