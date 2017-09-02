@@ -20,6 +20,8 @@
  * 
  */
 
+#define DEBUG 0
+
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
@@ -32,8 +34,10 @@
 
 //encoder Messagges
 #include <ros_arduino_msgs/Encoders.h>
+//IMU sensor_msgs
+#include <sensor_msgs/Imu.h>
 
-#define DEBUG 0
+
 
 #define pi 3.1415926 
 #define two_pi 6.2831853
@@ -96,6 +100,10 @@ double th = 0.0;
 double vx = 0;
 double vy = 0;
 double vth = 0.0;
+//global imu values
+double g_imu_dt = 0.0; //imu delta time
+double g_imu_z = 0.0; //angular velocity is the rotation in Z from imu_filter_madgwick's output
+ros::Time g_last_imu_time(0.0);
 
 //prototypes
 
@@ -215,7 +223,7 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
 }
 
 
-
+//ROS subsciber call back for incoder tics
 void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
   //callback every time the robot's wheel encoder message received
   
@@ -230,6 +238,25 @@ void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
     
 }
 
+//Ros subcriber callback for imu messages
+void IMUCallback( const sensor_msgs::Imu& imu){
+  //callback every time the robot's angular velocity is received
+  ros::Time current_time = ros::Time::now();
+  //this block is to filter out imu noise
+  //if(imu.angular_velocity.z > -0.03 && imu.angular_velocity.z < 0.03)
+  if(imu.angular_velocity.z > -0.005 && imu.angular_velocity.z < 0)
+  {
+    g_imu_z = 0.00;
+  }
+  else
+  {
+    g_imu_z = imu.angular_velocity.z;
+  }
+  
+  //Issue is in this block, also releates to delta_theta calculation
+  g_imu_dt = (current_time - g_last_imu_time).toSec();  //1.1.2 //get this from the header??
+  g_last_imu_time = current_time;                       //1.1.2
+}
 
 ros::Time g_last_loop_time(0.0); //time stamp for main loop
 
@@ -254,13 +281,13 @@ int main(int argc, char** argv){
   setup();
   
   //ROS Subscribers 
-  ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback);
-  //ros::Subscriber imu_sub = n.subscribe(imu_topic, 50, IMUCallback);
+  ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback); //TODO: 50 should be a parameter
+  ros::Subscriber imu_sub = nh.subscribe(imu_topic, 30, IMUCallback); //TODO: 30 should be a parameter
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
 
-  double rate = odom_publish_rate; //launch parameter: odom_publish_rate
+  double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
   
   ros::Rate r(rate); 
@@ -275,16 +302,26 @@ int main(int argc, char** argv){
     double dt = (main_current_time - g_last_loop_time).toSec();
     
     vx = (left_motor.linear_vel + right_motor.linear_vel)/2; //Ave vel in x direction
-    vy = 0; //wheels  cant roll  in y direction
-    vth = (right_motor.linear_vel - left_motor.linear_vel)/(track_width+wheel_width);  //subject to lots of wheel slippage
-    
     double delta_x = (vx* cos(th) - vy * sin(th)) * dt;  
-    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  
-    double delta_th = vth * dt; 
     
-    x += delta_x;
+    vy = 0; //wheels  cant roll  in y direction
+    double delta_y = (vx * sin(th) + vy * cos(th)) * dt;  
+    
+    //velocity for z(yaw) 
+       // note, relying on this with just wheel odom subject to lots of slippage
+       /*vth = (right_motor.linear_vel - left_motor.linear_vel)/(track_width+wheel_width);  
+       double delta_th = vth * dt;
+       */
+    
+      //TODO: Alternately, get this from or fuse with IMU pose data
+      vth= g_imu_z; //angular velocity is the rotation in Z from imu_filter_madgwick's output
+      double delta_th = vth * dt; //g_imu_dt;
+    
+    
+    //update x,y, theta(direction)
+    x += delta_x;     
     y += delta_y;
-    th += delta_th;  //theta is yay, rotation around z axix
+    th += delta_th;  //theta is yaw, rotation around z axix
     
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
@@ -325,7 +362,7 @@ int main(int argc, char** argv){
     odom.child_frame_id = baselink_frame;
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
-    odom.twist.twist.angular.z = vth;   
+    odom.twist.twist.angular.z = vth; //The   
     //Twist Covariance matrix
     odom.twist.covariance[0]  = 0.001;
     odom.twist.covariance[7]  = 0.001;
