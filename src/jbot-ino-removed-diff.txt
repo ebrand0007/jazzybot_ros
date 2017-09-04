@@ -5,12 +5,7 @@
 //#include "ros_lib/geometry_msgs/Twist.h"
 #include <geometry_msgs/Twist.h>
 
-//header file for pid server TODO: remove this
-#include "linoPID.h"
-//TODO: do we need this?
-#include "lino_base_config.h"
 
-#define COMMAND_RATE 10 //hz
 
 line 119
 
@@ -33,36 +28,6 @@ line 143
 
 
 main loop:
-//this block stops the motor when no command is received //TODO: modify this to work with drive_robot_raw_callback
-//if ((millis() - previous_command_time) >= 400)
-if ( millis() > drive_robot_motor_timeout ) 
-{
-  left_motor.required_rpm = 0;
-  right_motor.required_rpm = 0;
-  right_motor.pwm = 0;
-  left_motor.pwm = 0;
-  drive_robot(left_motor.pwm, right_motor.pwm);  //TODO: should these be zero??
-}
-
-line 284:
-
-
-
-//this block drives the robot based on defined rate
-if ((millis() - previous_control_time) >= (1000 / COMMAND_RATE))
-{
-  unsigned long current_time = millis();
-  unsigned long dt = current_time - previous_control_time;
-  //calculate motor's current speed
-  read_motor_rpm_(&left_motor, left_encoder.read(), dt);
-  read_motor_rpm_(&right_motor, right_encoder.read(), dt);
-  //calculate how much PWM is needed based on required RPM
-  calculate_pwm(&left_motor);
-  calculate_pwm(&right_motor);    
-  //move the wheels based on the PWM calculated
-  drive_robot(left_motor.pwm, right_motor.pwm);
-  previous_control_time = millis();
-}
 
 line 369:
 void pid_callback( const lino_pid::linoPID& pid) 
@@ -81,41 +46,6 @@ void pid_callback( const lino_pid::linoPID& pid)
 
 line 439
 
-
-void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt )
-{
-  // this function calculates the motor's RPM based on encoder ticks and delta time
-  
-  //convert the time from milliseconds to minutes
-  dt = 60000 / dt;
-  //calculate change in number of ticks from the encoder
-  double delta_ticks = current_encoder_ticks - mot->previous_encoder_ticks;
-  //calculate wheel's speed (RPM)
-  mot->current_rpm = (delta_ticks / double(encoder_pulse * gear_ratio)) * dt;
-  mot->radians_per_sec = (mot->current_rpm * two_pi)/60;
-  mot->previous_encoder_ticks = current_encoder_ticks;
-}
-
-void calculate_pwm(Motor * mot)
-{
-  // this function takes a Motor object argument,
-  // implements a PID controller and calculates the PWM required to drive the motor
-  double pid;
-  double new_rpm;
-  double error;
-  
-  //calculate the error ()
-  error = mot->required_rpm - mot->current_rpm;
-  //calculate the overall error
-  mot->total_pid_error += error;
-  //PID controller
-  pid = Kp * error  + Ki * mot->total_pid_error + Kd * (error - mot->previous_pid_error);
-  mot->previous_pid_error = error;
-  //adds the calculated PID value to the required rpm for error compensation
-  new_rpm = constrain(double(mot->pwm) * max_rpm / 255 + pid, -max_rpm, max_rpm);
-  //maps rpm to PWM signal, where 255 is the max possible value from an 8 bit controller
-  mot->pwm = (new_rpm / max_rpm) * 255;
-}
 
 -----------------------------------------------------------------
 Liniar velsocity related

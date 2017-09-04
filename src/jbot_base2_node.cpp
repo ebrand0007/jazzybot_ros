@@ -139,11 +139,8 @@ void drive_robot(int, int, int);
 void command_callback( const geometry_msgs::Twist& cmd_msg);
 //TODO: delete? void pid_callback( const lino_pid::linoPID& pid);
 
-
-//ros publishers
-ros::Publisher raw_pwm_pub; //Writes raw_pwm to motors //= nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-
-
+//ros publishers mesages
+jbot2_msgs::jbot2_pwm jbot2_pwm_msg;
 
 void init_motor(Motor * mot)
 {
@@ -330,6 +327,7 @@ int main(int argc, char** argv){
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
+  ros::Publisher raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10
   double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
   //raw_pwm timmer
@@ -442,9 +440,20 @@ int main(int argc, char** argv){
       raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pub time for 
       //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
       //ROS_INFO_STREAM(buffer);    
-      //jbot2_msgs::jbot2_pwm pwm_msg; 
-      jbot2_msgs::jbot2_pwm jbot2_pwm_msg;
-      //TODO: pusblish raw_pwm
+      //Publish the pwm to the hardware
+      
+      
+      //TODO: only publish when something changes, currently published forever.
+      jbot2_pwm_msg.header.stamp = main_current_time;
+      //jbot2_pwm_msg.header.frame_id = odom_frame; //TODO: do we need a frame?
+      jbot2_pwm_msg.left_pwm=left_motor.pwm;
+      jbot2_pwm_msg.right_pwm=right_motor.pwm;
+      jbot2_pwm_msg.duration=400;
+      raw_pwm_pub.publish(jbot2_pwm_msg);
+      
+      //ros::Publisher raw_pwm_pub("raw_pwm", &jbot2_pwm_msg); //Writes raw_pwm to motors //= nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
+      
+      
     }
       
 
@@ -490,6 +499,11 @@ void command_callback( const geometry_msgs::Twist& cmd_msg)
 {
   //callback function every time linear and angular speed is received from 'cmd_vel' topic
   //this callback function receives cmd_msg object where linear and angular speed are stored
+  
+  //TODO: Do we need these?
+  left_motor.required_rpm=0;
+  right_motor.required_rpm =0;
+  
   
   double linear_vel = cmd_msg.linear.x;
   double angular_vel = cmd_msg.angular.z;
@@ -537,3 +551,13 @@ void drive_robot( int left_pwm, int pwm_right, int duration)
   
 
 }
+/* ----------------------------------------------------------------------------------------
+ * 
+ *---------------------------------------------------------------------------------------- 
+ */
+
+
+/* ----------------------------------------------------------------------------------------
+ * 
+ *---------------------------------------------------------------------------------------- 
+ */
