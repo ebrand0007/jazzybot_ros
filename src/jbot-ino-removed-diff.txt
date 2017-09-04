@@ -13,50 +13,23 @@
 #define COMMAND_RATE 10 //hz
 
 line 119
-typedef struct
-{
-  double previous_pid_error; //last measured pid error
-  double total_pid_error; //overall pid error of the motor
-  long previous_encoder_ticks; //last measured encoder ticks
-  double current_rpm; //current speed of the motor
-  double required_rpm;//desired speed of the motor 
-  int pwm;//desired speed of the motor mapped to PWM
-  double radians_per_sec; // speed of the motor in radians per sec = rpm * two_pi/60
-}
-Motor;
-
-//create a Motor object
-Motor left_motor;
-Motor right_motor;
 
 
 line 130 prototypes
-void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt );
-void calculate_pwm(Motor * mot);
-void drive_robot(int, int);
+void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt ); //Note: this not needed, set from 
 
-//callback function prototypes for subscribers
-void command_callback( const geometry_msgs::Twist& cmd_msg);
-void pid_callback( const lino_pid::linoPID& pid);
 
 unsigned long lastMilli = 0;       
 unsigned long lastMilliPub = 0;
-unsigned long previous_command_time = 0;
+
 unsigned long publish_vel_time = 0;
 
 line 143
-float Kp = k_p;
-float Kd = k_d;
-float Ki = k_i;
 
 
-// ROS subscriber msgs
-ros::Subscriber<geometry_msgs::Twist> cmd_sub("cmd_vel", command_callback);
-ros::Subscriber<lino_pid::linoPID> pid_sub("pid", pid_callback);
 
-setup {
-  drive_robot(0,0);
-}
+
+
 
 
 main loop:
@@ -104,71 +77,10 @@ void pid_callback( const lino_pid::linoPID& pid)
 }
 
 
-void command_callback( const geometry_msgs::Twist& cmd_msg)
-{
-  //callback function every time linear and angular speed is received from 'cmd_vel' topic
-  //this callback function receives cmd_msg object where linear and angular speed are stored
-  
-  previous_command_time = millis();
-  double linear_vel = cmd_msg.linear.x;
-  double angular_vel = cmd_msg.angular.z;
-  //convert m/s to m/min
-  double linear_vel_mins = linear_vel * 60;
-  //convert rad/s to rad/min
-  double angular_vel_mins = angular_vel * 60;
-  //calculate the wheel's circumference
-  double circumference = pi * wheel_diameter;
-  //calculate the tangential velocity of the wheel if the robot's rotating where Vt = ω * radius
-  double tangential_vel = angular_vel_mins * (track_width / 2);
-  
-  //calculate and assign desired RPM for each motor
-  left_motor.required_rpm = (linear_vel_mins / circumference) - (tangential_vel / circumference);
-  right_motor.required_rpm = (linear_vel_mins / circumference) + (tangential_vel / circumference);
-  
-  //Time at which to reset motors in milisec - ohcrap situation
-  drive_robot_motor_timeout=millis()+400;   //400 milisec from now
-  
-}
+
 
 line 439
-void drive_robot( int command_left, int command_right)
-{
-  
-  //Debugging
-  sprintf (buffer, "  Recieved command_left_pwm: %d", command_left);
-  nh.loginfo(buffer);  
-  sprintf (buffer, "  Recieved command_right_pwm: %d", command_right);
-  nh.loginfo(buffer);
-  
-  //this functions spins the left and right wheel based on a defined speed in PWM  
-  //change left motor direction
-  //forward
-  if (command_left >= 0)
-  {
-    digitalWrite(left_motor_direction, HIGH);
-  }
-  //reverse
-  else
-  {
-    digitalWrite(left_motor_direction, LOW);
-  }
-  //spin the motor
-  analogWrite(left_motor_pwm, abs(command_left));
-  
-  //change right motor direction
-  //forward
-  if (command_right >= 0)
-  {
-    digitalWrite(right_motor_direction, HIGH);
-  }
-  //reverse
-  else
-  {
-    digitalWrite(right_motor_direction, LOW);
-  }
-  //spin the motor
-  analogWrite(right_motor_pwm, abs(command_right));
-}
+
 
 void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt )
 {
@@ -213,8 +125,7 @@ Liniar velsocity related
 //header file for publishing "rpm"
 #include <geometry_msgs/Vector3Stamped.h>
 
-//JointState Messages
-#include <sensor_msgs/JointState.h>
+
 
 //PROTOTYPE
 void publish_linear_velocity(unsigned long);
@@ -262,6 +173,9 @@ void publish_linear_velocity(unsigned long time)
 Joint state related
 -----------------------------------------------------------------
 #define JOINTSTATE_PUB_RATE 10 //hz
+
+//JointState Messages
+#include <sensor_msgs/JointState.h>
 
 unsigned long previous_jointstate_time = 0;
 

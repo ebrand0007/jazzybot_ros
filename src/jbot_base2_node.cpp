@@ -36,8 +36,11 @@
 #include <ros_arduino_msgs/Encoders.h>
 //IMU sensor_msgs
 #include <sensor_msgs/Imu.h>
-
-
+//header file for cmd_subscribing to "cmd_vel"
+//#include "ros_lib/geometry_msgs/Twist.h"
+#include <geometry_msgs/Twist.h>
+//header file for drive_robot_raw_publisher
+#include "jbot2_msgs/jbot2_pwm.h"
 
 #define pi 3.1415926 
 #define two_pi 6.2831853
@@ -64,7 +67,24 @@ const double one_encodertick_in_radians = two_pi / ticks_per_wheel_rotation;
   //radian(r) is the radius of a circle.   2 pi r in radians = 360 deg
   
 const char *prog_name="jbot_base2_node";
-const char *prog_ver="2.0.0";
+const char *prog_ver="2.1.0";
+
+//Pid values
+float Kp = 0.4; // P constant
+float Ki = 0.0; // I constant
+float Kd = 1.0; // D constant
+
+template<class T>
+const T& constrain(const T& x, const T& a, const T& b) {
+  if(x < a) {
+    return a;
+  }
+  else if(b < x) {
+    return b;
+  }
+  else
+    return x;
+}
 
 typedef struct
 {
@@ -90,6 +110,7 @@ std::string vel_topic;  //to publish
 std::string encoder_topic; //to subscribe to
 int odom_publish_rate = 50; // pub rate for odom
 std::string imu_topic;  //to subscribe to
+
 //TODO: joint states
 
 //odom pos values
@@ -105,7 +126,23 @@ double g_imu_dt = 0.0; //imu delta time
 double g_imu_z = 0.0; //angular velocity is the rotation in Z from imu_filter_madgwick's output
 ros::Time g_last_imu_time(0.0);
 
+//cmd_vel related
+int raw_pwm_pub_hz=10; //rate to pubish raw_pwm_pub updates to hardware
+double raw_pwm_next_pub_time=0; // used in main controll loop for when to publish next pid message time::now().toSec+(1/raw_pwm_pub_h); 
+
 //prototypes
+//TODO: delete: void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt );
+void calculate_pwm(Motor * mot);
+void drive_robot(int, int, int);
+
+//callback function prototypes for Ros subscribers
+void command_callback( const geometry_msgs::Twist& cmd_msg);
+//TODO: delete? void pid_callback( const lino_pid::linoPID& pid);
+
+
+//ros publishers
+ros::Publisher raw_pwm_pub; //Writes raw_pwm to motors //= nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
+
 
 
 void init_motor(Motor * mot)
@@ -126,6 +163,7 @@ void setup()
   //init motors
   init_motor(&left_motor);
   init_motor(&right_motor);  
+  drive_robot(0,0,1000); //stop motors
 
   char buffer[80]; //string buffer for info logging
   
@@ -191,13 +229,10 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
       sprintf (buffer, "  ***dt_seconds: %15.8f",delta_time_motor);
       //#sprintf (buffer, "  ***dt_seconds: %15.8f",dt_seconds);
       ROS_INFO_STREAM(buffer); 
-      
       //sprintf (buffer, "  ***dt_minutes: %15.8f",dt_minutes);
       //ROS_INFO_STREAM(buffer); 
-      
       sprintf (buffer, "  *delta_ticks: %15.4f",delta_ticks);
-      ROS_INFO_STREAM(buffer);
-      
+      ROS_INFO_STREAM(buffer);     
       sprintf (buffer, "  *delta_ticks_per_sec: %15.4f",delta_ticks_per_sec);
       ROS_INFO_STREAM(buffer);
       /* 
@@ -238,10 +273,14 @@ void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
     
 }
 
+/* ----------------------------------------------------------------------------------------
+ *
+ *---------------------------------------------------------------------------------------- 
+*/
 //Ros subcriber callback for imu messages
 void IMUCallback( const sensor_msgs::Imu& imu){
   //callback every time the robot's angular velocity is received
-  ros::Time current_time = ros::Time::now();
+  ros::Time current_time = ros::Time::now();  //TODO: get this from the message header?
   //this block is to filter out imu noise
   //if(imu.angular_velocity.z > -0.03 && imu.angular_velocity.z < 0.03)
   if(imu.angular_velocity.z > -0.005 && imu.angular_velocity.z < 0)
@@ -258,6 +297,10 @@ void IMUCallback( const sensor_msgs::Imu& imu){
   g_last_imu_time = current_time;                       //1.1.2
 }
 
+/* ----------------------------------------------------------------------------------------
+ * Main
+ *---------------------------------------------------------------------------------------- 
+ */
 ros::Time g_last_loop_time(0.0); //time stamp for main loop
 
 int main(int argc, char** argv){
@@ -265,37 +308,40 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   ros::NodeHandle nh_private_("~");
   tf::TransformBroadcaster odom_broadcaster;
-  char buffer[80]; //string buffer for info logging
-
   
+  char buffer[80]; //string buffer for info logging
   //set ros launch params
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link2");
   nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom2");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
-  nh_private_.param("odom_publish_rate", odom_publish_rate, 50); //odom pubish rate
+  nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
-  
-  
+   
   setup();
   
   //ROS Subscribers 
   ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback); //TODO: 50 should be a parameter
   ros::Subscriber imu_sub = nh.subscribe(imu_topic, 30, IMUCallback); //TODO: 30 should be a parameter
+  ros::Subscriber cmd_sub = nh.subscribe("cmd_vel", 30, command_callback); //Command callback Subscriber
+  //ros::Subscriber<geometry_msgs::Twist> cmd_sub("cmd_vel", command_callback);
+  // Delete? ros::Subscriber<lino_pid::linoPID> pid_sub("pid", pid_callback);
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-
   double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
+  //raw_pwm timmer
+  raw_pwm_next_pub_time=ros::Time::now().toSec()+double(1.0/raw_pwm_pub_hz);  //Set next publish time
   
+
   ros::Rate r(rate); 
   while(nh.ok()){
     //see: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
     ros::spinOnce();
-    ros::Time main_current_time = ros::Time::now(); 
-    
+    ros::Time main_current_time = ros::Time::now();
+    double main_current_time_toSec=main_current_time.toSec();
     
     /*************************/
     //compute odometry in a typical way given the velocities of the robot
@@ -370,19 +416,124 @@ int main(int argc, char** argv){
     odom.twist.covariance[21] = 99999;
     odom.twist.covariance[28] = 99999;
     odom.twist.covariance[35] = 0.001;
-    
-    
     // covariance matrix revferances here
     // See https://answers.ros.org/question/51007/covariance-matrix/
     // and https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
     // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/\
     // and https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
     
-    
     //publish the message
     odom_pub.publish(odom);
+
+    //sprintf (buffer, "*rosTime.tosec(): %15.4f",main_current_time.toSec());
+    //ROS_INFO_STREAM(buffer);
+    //PID control loop
+    if ( main_current_time_toSec > raw_pwm_next_pub_time) {
+      ROS_INFO_STREAM("***********updating pid**************");
+      
+      //No need to read current motor rpms, the encoderCallback sets current encoder_msg are received
+      
+      //calculate pid
+      calculate_pwm(&left_motor);
+      calculate_pwm(&right_motor);
+      //move the robot
+      int millis_duration=400;
+      drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
+      raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pub time for 
+      //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
+      //ROS_INFO_STREAM(buffer);    
+      //jbot2_msgs::jbot2_pwm pwm_msg; 
+      jbot2_msgs::jbot2_pwm jbot2_pwm_msg;
+      //TODO: pusblish raw_pwm
+    }
+      
+
+
         
     g_last_loop_time = main_current_time;
     r.sleep();
   }
+}
+
+/* ----------------------------------------------------------------------------------------
+ * calculate_pwm: this function takes a Motor object argument, 
+ * implements a PID controller and calculates the PWM required to drive the motor*
+ *---------------------------------------------------------------------------------------- 
+ */
+void calculate_pwm(Motor * mot)
+{
+
+  double pid;
+  double new_rpm;
+  double error;
+  
+  //calculate the error ()
+  error = mot->required_rpm - mot->current_rpm;
+  //calculate the overall error
+  mot->total_pid_error += error;
+  //PID controller
+  pid = Kp * error  + Ki * mot->total_pid_error + Kd * (error - mot->previous_pid_error);
+  mot->previous_pid_error = error;
+  //adds the calculated PID value to the required rpm for error compensation
+  new_rpm = constrain(double(mot->pwm) * max_rpm / 255 + pid, -max_rpm, max_rpm);
+  //maps rpm to PWM signal, where 255 is the max possible value from an 8 bit controller
+  mot->pwm = (new_rpm / max_rpm) * 255;
+}
+
+
+
+/* ----------------------------------------------------------------------------------------
+ * Callback when a cmd_vel message is recieved
+ *---------------------------------------------------------------------------------------- 
+ */
+void command_callback( const geometry_msgs::Twist& cmd_msg)
+{
+  //callback function every time linear and angular speed is received from 'cmd_vel' topic
+  //this callback function receives cmd_msg object where linear and angular speed are stored
+  
+  double linear_vel = cmd_msg.linear.x;
+  double angular_vel = cmd_msg.angular.z;
+  //convert m/s to m/min
+  double linear_vel_mins = linear_vel * 60;
+  //convert rad/s to rad/min
+  double angular_vel_mins = angular_vel * 60;
+  //calculate the wheel's circumference
+  double circumference = pi * wheel_diameter;
+  //calculate the tangential velocity of the wheel if the robot's rotating where Vt = ω * radius
+  double tangential_vel = angular_vel_mins * (track_width / 2);
+  
+  //calculate and assign desired RPM for each motor
+  left_motor.required_rpm = (linear_vel_mins / circumference) - (tangential_vel / circumference);
+  right_motor.required_rpm = (linear_vel_mins / circumference) + (tangential_vel / circumference);
+  
+  char buffer[80]; //string buffer for info logging
+  sprintf (buffer, "  *left_motor.required_rpm: %15.4f",left_motor.required_rpm);
+  ROS_INFO_STREAM(buffer);
+  sprintf (buffer, "  *right_motor.required_rpm: %15.4f",right_motor.required_rpm);
+  ROS_INFO_STREAM(buffer);
+  
+  
+  //main Control loop recaluclates pid based and publishes raw_pwm
+  
+}
+/* ----------------------------------------------------------------------------------------
+ * drive_robot - raw motor control:  
+ * this functions spins the left and right wheel based on a defined speed in +/-PWM  for a duration given in millisec
+ * writes jbot2_msgs::jbot2_pwm(pwm,pwm,duration) to arduino
+ *---------------------------------------------------------------------------------------- 
+ */
+//void drive_robot( int command_left, int command_right)
+void drive_robot( int left_pwm, int pwm_right, int duration)
+{
+  //Debugging
+  char buffer[80]; //string buffer for info logging
+  /*sprintf (buffer, "  Recieved left_pwm_pwm: %d", left_pwm);
+  ROS_INFO_STREAM(buffer);  
+  sprintf (buffer, "  Recieved pwm_right_pwm: %d", pwm_right);
+  ROS_INFO_STREAM(buffer);
+  */
+  
+  //TODO: publish write to raw_pwm topic jbot2_msgs::jbot2_pwm(pwm,pwm,duration) to arduino
+  
+
 }
