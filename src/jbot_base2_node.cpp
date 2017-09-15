@@ -137,10 +137,12 @@ void drive_robot(int, int, int);
 
 //callback function prototypes for Ros subscribers
 void command_callback( const geometry_msgs::Twist& cmd_msg);
+double last_command_callback_time =0.0; //when exceeded, set desired rpms for motors to 0
 //TODO: delete? void pid_callback( const lino_pid::linoPID& pid);
 
 //ros publishers mesages
 jbot2_msgs::jbot2_pwm jbot2_pwm_msg;
+ros::Publisher raw_pwm_pub;
 
 void init_motor(Motor * mot)
 {
@@ -160,7 +162,7 @@ void setup()
   //init motors
   init_motor(&left_motor);
   init_motor(&right_motor);  
-  drive_robot(0,0,1000); //stop motors
+  drive_robot(0,0,1000); //stop motors TODO: cant call this here, need nodehandler(nh) to be setup in main first
 
   char buffer[80]; //string buffer for info logging
   
@@ -316,7 +318,7 @@ int main(int argc, char** argv){
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
    
-  setup();
+  
   
   //ROS Subscribers 
   ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback); //TODO: 50 should be a parameter
@@ -327,18 +329,20 @@ int main(int argc, char** argv){
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-  ros::Publisher raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10
+  raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10
   double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
   //raw_pwm timmer
   raw_pwm_next_pub_time=ros::Time::now().toSec()+double(1.0/raw_pwm_pub_hz);  //Set next publish time
   
+  setup();
 
   ros::Rate r(rate); 
-  while(nh.ok()){
+  while(nh.ok())
+  {
     //see: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
     ros::spinOnce();
-    ros::Time main_current_time = ros::Time::now();
+    ros::Time main_current_time = ros::Time::now();  
     double main_current_time_toSec=main_current_time.toSec();
     
     /*************************/
@@ -423,42 +427,56 @@ int main(int argc, char** argv){
     //publish the message
     odom_pub.publish(odom);
 
+    
+    
     //sprintf (buffer, "*rosTime.tosec(): %15.4f",main_current_time.toSec());
     //ROS_INFO_STREAM(buffer);
-    //PID control loop
-    if ( main_current_time_toSec > raw_pwm_next_pub_time) {
-      ROS_INFO_STREAM("***********updating pid**************");
+    //PID control loop, updates needed pid every at intervals defined in raw_pwm_pub_hz
+    if ( main_current_time_toSec > raw_pwm_next_pub_time) 
+    {
+      
       
       //No need to read current motor rpms, the encoderCallback sets current encoder_msg are received
       
       //calculate pid
       calculate_pwm(&left_motor);
       calculate_pwm(&right_motor);
-      //move the robot
-      int millis_duration=400;
+      
+      int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is recieved
+      //Publish the pwm to the hardware to move the robot
       drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
-      raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pub time for 
+      raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
       //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
-      //ROS_INFO_STREAM(buffer);    
-      //Publish the pwm to the hardware
-      
-      
-      //TODO: only publish when something changes, currently published forever.
-      jbot2_pwm_msg.header.stamp = main_current_time;
-      //jbot2_pwm_msg.header.frame_id = odom_frame; //TODO: do we need a frame?
-      jbot2_pwm_msg.left_pwm=left_motor.pwm;
-      jbot2_pwm_msg.right_pwm=right_motor.pwm;
-      jbot2_pwm_msg.duration=400;
-      raw_pwm_pub.publish(jbot2_pwm_msg);
-      
-      //ros::Publisher raw_pwm_pub("raw_pwm", &jbot2_pwm_msg); //Writes raw_pwm to motors //= nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-      
+      //ROS_INFO_STREAM(buffer);          
       
     }
       
-
-
-        
+    //TODO: only publish when something when newCmd is recieved , currently published forever.
+    //TODO: see https://github.com/ebrand0007/jazzybot_hardware_and_Arduino_code/blob/master/jazzy_base_arduino_code/jazzy_base_arduino/jazzy_base_arduino.ino#L308
+    //this block stops the motor when no command is received
+    double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
+    //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
+    if (command_callback_timediff > 0.400) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
+    {
+      if (DEBUG) 
+      {
+        sprintf (buffer, "     main_current_time_toSec: %15.4f",main_current_time_toSec);
+        ROS_INFO_STREAM(buffer);
+        sprintf (buffer, "     last_command_callback_time: %15.4f",last_command_callback_time);
+        ROS_INFO_STREAM(buffer);
+        sprintf (buffer, "     *cmd_vel exceeded. reseting requred_rpm to 0 Timediff: %15.4f",command_callback_timediff); //double(main_current_time_toSec - last_command_callback_time));
+        ROS_INFO_STREAM(buffer);
+      }
+      left_motor.required_rpm = 0;
+      right_motor.required_rpm = 0;
+      //recalculate pid
+      //calculate_pwm(&left_motor);   //TODO: added to slow motors slowly to remove jerk
+      //calculate_pwm(&right_motor);  //TODO: added to slow motors slowly tp remove jerk
+      right_motor.pwm = 0; //TODO, leads to jerk
+      left_motor.pwm = 0; //TODO, leads to jerk
+      drive_robot(left_motor.pwm, right_motor.pwm,600); //TODO: duration of 600 millsec should be a variable
+    }
+      
     g_last_loop_time = main_current_time;
     r.sleep();
   }
@@ -500,6 +518,8 @@ void command_callback( const geometry_msgs::Twist& cmd_msg)
   //callback function every time linear and angular speed is received from 'cmd_vel' topic
   //this callback function receives cmd_msg object where linear and angular speed are stored
   
+  last_command_callback_time = ros::Time::now().toSec();
+  
   //TODO: Do we need these?
   left_motor.required_rpm=0;
   right_motor.required_rpm =0;
@@ -526,31 +546,36 @@ void command_callback( const geometry_msgs::Twist& cmd_msg)
   sprintf (buffer, "  *right_motor.required_rpm: %15.4f",right_motor.required_rpm);
   ROS_INFO_STREAM(buffer);
   
-  
-  //main Control loop recaluclates pid based and publishes raw_pwm
+  //Note: main Control loop recaluclates pid based and publishes raw_pwm
   
 }
 /* ----------------------------------------------------------------------------------------
  * drive_robot - raw motor control:  
  * this functions spins the left and right wheel based on a defined speed in +/-PWM  for a duration given in millisec
- * writes jbot2_msgs::jbot2_pwm(pwm,pwm,duration) to arduino
+ * writes jbot2_msgs::jbot2_pwm(int pwm,int pwm,int duration) to arduino
  *---------------------------------------------------------------------------------------- 
  */
 //void drive_robot( int command_left, int command_right)
-void drive_robot( int left_pwm, int pwm_right, int duration)
+void drive_robot( int left_pwm, int right_pwm, int duration)
 {
   //Debugging
+  /*
   char buffer[80]; //string buffer for info logging
-  /*sprintf (buffer, "  Recieved left_pwm_pwm: %d", left_pwm);
+  sprintf (buffer, "  Recieved left_pwm_pwm: %d", left_pwm);
   ROS_INFO_STREAM(buffer);  
   sprintf (buffer, "  Recieved pwm_right_pwm: %d", pwm_right);
   ROS_INFO_STREAM(buffer);
   */
   
-  //TODO: publish write to raw_pwm topic jbot2_msgs::jbot2_pwm(pwm,pwm,duration) to arduino
-  
-
+  //publish write to raw_pwm topic jbot2_msgs::jbot2_pwm(pwm,pwm,duration) to arduino
+  jbot2_pwm_msg.header.stamp = ros::Time::now(); 
+  //jbot2_pwm_msg.header.frame_id = odom_frame; 
+  jbot2_pwm_msg.left_pwm=left_pwm;
+  jbot2_pwm_msg.right_pwm=right_pwm;
+  jbot2_pwm_msg.duration=duration;
+  raw_pwm_pub.publish(jbot2_pwm_msg);
 }
+
 /* ----------------------------------------------------------------------------------------
  * 
  *---------------------------------------------------------------------------------------- 
