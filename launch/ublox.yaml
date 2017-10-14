@@ -1,0 +1,67 @@
+debug: 1                    # Range 0-4 (0 means no debug statements will print)
+
+device: /dev/ttyS2
+frame_id: gps_base
+dynamic_model: portable     
+fix_mode: 3D #auto              # Switches between 2D/3D automatically
+dr_limit: 0                 # Dead reckoning limit
+enable_ppp: false           # Advanced setting not supported by all devices
+
+rate: 4                    # Measurement rate in Hz
+nav_rate: 4                 # in number of measurement cycles
+
+uart1:
+  baudrate: 9600            # baudrate is device specific, check the device manual
+  in:  1                     # UBX
+  out: 1                   # RTCM http://docs.ros.org/kinetic/api/ublox_msgs/html/msg/CfgPRT.html
+#
+
+dat:
+  set: false                # Do not set the user configured datum
+
+# GNSS Config, verify which GNSS are supported by your device
+gnss:
+  gps: true                 # (not required since it defaults to true)
+  glonass: true             
+  beidou: false             
+  qzss: false               
+  sbas: false
+
+
+#additional topics to publish
+#publish:
+nav:
+  clock: true
+  #all: true
+
+# Sample NMEA parameter configuration
+
+#nmea:
+#  set: true
+#  version: 65
+#  num_sv: 8
+#  sv_numbering: 1
+#  compat: true
+#  consider: true
+#  limit82: true
+#  high_prec: false
+#  filter:
+#    pos: true
+#    msk_pos: true
+#    time: false
+#    date: false
+#    gps_only: false
+#    track: false
+#  gnssToFilter:
+#    gps: false
+#    sbas: true
+#    qzss: true
+#    glonass: false
+#    beidou: true
+#  main_talker_id: 1
+#  gsv_talker_id: 1
+#  bds_talker_id: [0,0]
+
+inf:
+   all: true
+#   debug: true
