@@ -310,8 +310,8 @@ int main(int argc, char** argv){
   
   char buffer[80]; //string buffer for info logging
   //set ros launch params
-  nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link2");
-  nh_private_.param<std::string>("odom_frame", odom_frame, "jbot_wheelodom2");
+  nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link");
+  nh_private_.param<std::string>("odom_frame", odom_frame, "/odometry/wheelodom");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
@@ -377,7 +377,7 @@ int main(int argc, char** argv){
     //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = main_current_time;
-    odom_trans.header.frame_id = odom_frame;
+    odom_trans.header.frame_id = "odom"; //odom_frame; TODO: this shoud be a parameter
     odom_trans.child_frame_id = baselink_frame;
     
     odom_trans.transform.translation.x = x;
@@ -456,7 +456,7 @@ int main(int argc, char** argv){
     //this block stops the motor when no command is received
     double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
     //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
-    if (command_callback_timediff > 0.400) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
+    if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
     {
       if (DEBUG) 
       {
