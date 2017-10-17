@@ -315,9 +315,10 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("odom_frame", odom_frame, "odom"); 
   nh_private_.param<std::string>("wheel_odom_topic", wheel_odom_topic, "/odometry/wheelodom");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
-  nh_private_.param<std::string>("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
-  nh_private_.param<std::string>("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
+  nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
+  nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
+  
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
    
