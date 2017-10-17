@@ -104,8 +104,9 @@ Motor left_motor;
 Motor right_motor;
 
 //ros launch params definitions
-std::string baselink_frame; //TF base frame for robot usually:baselink_frame or base_link
-std::string odom_frame; // to publish
+std::string baselink_frame; //TF base frame for robot usually: baselink_frame or base_link
+std::string odom_frame; // world frome to publish odom
+std::string wheel_odom_topic; // name of wheel odom topic to publish
 std::string vel_topic;  //to publish
 std::string encoder_topic; //to subscribe to
 int odom_publish_rate = 50; // pub rate for odom
@@ -128,7 +129,7 @@ ros::Time g_last_imu_time(0.0);
 
 //cmd_vel related
 int raw_pwm_pub_hz=10; //rate to pubish raw_pwm_pub updates to hardware
-double raw_pwm_next_pub_time=0; // used in main controll loop for when to publish next pid message time::now().toSec+(1/raw_pwm_pub_h); 
+double raw_pwm_next_pub_time=0; // used in main control loop for when to publish next pwm pid message time::now().toSec+(1/raw_pwm_pub_h); 
 
 //prototypes
 //TODO: delete: void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt );
@@ -311,9 +312,11 @@ int main(int argc, char** argv){
   char buffer[80]; //string buffer for info logging
   //set ros launch params
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link");
-  nh_private_.param<std::string>("odom_frame", odom_frame, "/odometry/wheelodom");
+  nh_private_.param<std::string>("odom_frame", odom_frame, "odom"); 
+  nh_private_.param<std::string>("wheel_odom_topic", wheel_odom_topic, "/odometry/wheelodom");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
-  nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
+  nh_private_.param<std::string>("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
+  nh_private_.param<std::string>("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
@@ -329,7 +332,8 @@ int main(int argc, char** argv){
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-  raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10
+  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
+  raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10??? or use different
   double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
   //raw_pwm timmer
@@ -374,10 +378,10 @@ int main(int argc, char** argv){
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
     
-    //first, we'll publish the transform over tf
+    //first, we'll publish the odom transform world frame over tf
     geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = main_current_time;
-    odom_trans.header.frame_id = "odom"; //odom_frame; TODO: this shoud be a parameter
+    odom_trans.header.frame_id = odom_frame; 
     odom_trans.child_frame_id = baselink_frame;
     
     odom_trans.transform.translation.x = x;
@@ -388,10 +392,11 @@ int main(int argc, char** argv){
     //send the transform
     odom_broadcaster.sendTransform(odom_trans);
     
-    //next, we'll publish the odometry message over ROS
+    //next, we'll publish the odometry topics over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = main_current_time;
-    odom.header.frame_id = odom_frame;
+    odom.header.frame_id = wheel_odom_topic;
+    //TODO: set parent, shold be "odom" or base_link??
     
     //set the pose position
     odom.pose.pose.position.x = x;
