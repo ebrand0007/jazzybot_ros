@@ -320,7 +320,7 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
-  nh_private_.param("debug_level",debug_level,0) //debug_level 1 or 2
+  nh_private_.param("debug_level",debug_level,0); //debug_level 1 or 2
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
   //ROS Subscribers 
@@ -432,21 +432,16 @@ int main(int argc, char** argv){
     //publish the message
     odom_pub.publish(odom);
 
-    
-    
+    //calculate pid
+    //  No need to read current motor rpms, the encoderCallback sets current encoder_msg are received
+    calculate_pwm(&left_motor);
+    calculate_pwm(&right_motor);
+
     //sprintf (buffer, "*rosTime.tosec(): %15.4f",main_current_time.toSec());
     //ROS_INFO_STREAM(buffer);
     //PID control loop, updates needed pid every at intervals defined in raw_pwm_pub_hz
     if ( main_current_time_toSec > raw_pwm_next_pub_time) 
     {
-      
-      
-      //No need to read current motor rpms, the encoderCallback sets current encoder_msg are received
-      
-      //calculate pid
-      calculate_pwm(&left_motor);
-      calculate_pwm(&right_motor);
-      
       int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is recieved
       //Publish the pwm to the hardware to move the robot
       drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
