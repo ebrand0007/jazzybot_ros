@@ -20,7 +20,7 @@
  * 
  */
 
-#define DEBUG 0
+
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -49,6 +49,8 @@
 #define k_p 0.4 // P constant
 #define k_i 0.0 // I constant
 #define k_d 1.0 // D constant
+
+int debug_level=0; 
 
 //define your motors' specs here
 const double max_rpm=1241; //motor's maximum RPM(1241)?? or Wheel Max RPM(70ish)? How to set?? Was 330
@@ -188,7 +190,7 @@ void setup()
   ROS_INFO_STREAM(buffer);
   
   //Debugging
-  if ( DEBUG) 
+  if ( debug_level > 1) 
   {
     double one_rpm_in_tics_per_sec=ticks_per_wheel_rotation/60;
     sprintf (buffer, "%s::*One rpm in ticks/second: %.4f",prog_name,one_rpm_in_tics_per_sec);
@@ -223,7 +225,7 @@ void calculate_motor_rpm_and_radian(Motor * mot, long current_encoder_ticks, dou
   //debug code:
   if (delta_ticks != 0.0) 
   {
-    if ( DEBUG) 
+    if ( debug_level > 1) 
     {
       ROS_INFO_STREAM("Motor Changed");
       sprintf (buffer, "  ***dt_seconds: %15.8f",delta_time_motor);
@@ -318,6 +320,7 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
+  nh_private_.param("debug_level",debug_level,0) //debug_level 1 or 2
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
   //ROS Subscribers 
@@ -460,7 +463,7 @@ int main(int argc, char** argv){
     //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
     if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
     {
-      if (DEBUG) 
+      if (debug_level > 1) 
       {
         sprintf (buffer, "     main_current_time_toSec: %15.4f",main_current_time_toSec);
         ROS_INFO_STREAM(buffer);
@@ -541,12 +544,14 @@ void command_callback( const geometry_msgs::Twist& cmd_msg)
   //calculate and assign desired RPM for each motor
   left_motor.required_rpm = (linear_vel_mins / circumference) - (tangential_vel / circumference);
   right_motor.required_rpm = (linear_vel_mins / circumference) + (tangential_vel / circumference);
-  
-  char buffer[80]; //string buffer for info logging
-  sprintf (buffer, "  *left_motor.required_rpm: %15.4f",left_motor.required_rpm);
-  ROS_INFO_STREAM(buffer);
-  sprintf (buffer, "  *right_motor.required_rpm: %15.4f",right_motor.required_rpm);
-  ROS_INFO_STREAM(buffer);
+  if (debug_level > 0) 
+  {
+    char buffer[80]; //string buffer for info logging
+    sprintf (buffer, "  *left_motor.required_rpm: %15.4f",left_motor.required_rpm);
+    ROS_INFO_STREAM(buffer);
+    sprintf (buffer, "  *right_motor.required_rpm: %15.4f",right_motor.required_rpm);
+    ROS_INFO_STREAM(buffer);
+  }
   
   //Note: main Control loop recaluclates pid based and publishes raw_pwm
   
