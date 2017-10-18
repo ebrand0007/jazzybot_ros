@@ -333,7 +333,7 @@ int main(int argc, char** argv){
   
   //Ros publishers
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
+  //TODO: delete, dup of above  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
   raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10??? or use different
   double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
