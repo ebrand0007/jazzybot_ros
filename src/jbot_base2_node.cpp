@@ -318,11 +318,7 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
-  
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
-  
-   
-  
   
   //ROS Subscribers 
   ros::Subscriber encoder_sub = nh.subscribe(encoder_topic, 50, encoderCallback); //TODO: 50 should be a parameter
@@ -332,16 +328,16 @@ int main(int argc, char** argv){
   // Delete? ros::Subscriber<lino_pid::linoPID> pid_sub("pid", pid_callback);
   
   //Ros publishers
-  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
-  //TODO: delete, dup of above  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
+  //TODO: delete, dup of below ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
+  ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
   raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10??? or use different
-  double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   
   //raw_pwm timmer
   raw_pwm_next_pub_time=ros::Time::now().toSec()+double(1.0/raw_pwm_pub_hz);  //Set next publish time
   
   setup();
 
+  double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
   ros::Rate r(rate); 
   while(nh.ok())
   {
