@@ -134,7 +134,6 @@ int raw_pwm_pub_hz=10; //rate to pubish raw_pwm_pub updates to hardware
 double raw_pwm_next_pub_time=0; // used in main control loop for when to publish next pwm pid message time::now().toSec+(1/raw_pwm_pub_h); 
 
 //prototypes
-//TODO: delete: void read_motor_rpm_(Motor * mot, long current_encoder_ticks, unsigned long dt );
 void calculate_pwm(Motor * mot);
 void drive_robot(int, int, int);
 
@@ -151,8 +150,8 @@ void init_motor(Motor * mot)
 {
   mot->previous_pid_error=0; 
   mot->total_pid_error=0;  
-  mot->previous_encoder_ticks=0;  //TODO: should read this once from the encoder header
-  mot->encoder_lasttime=ros::Time::now().toSec(); //TODO: should read this once from the encoder header
+  mot->previous_encoder_ticks=0;  
+  mot->encoder_lasttime=ros::Time::now().toSec(); 
   mot->current_rpm=0;
   mot->required_rpm=0;
   mot->pwm=0;
@@ -282,7 +281,7 @@ void encoderCallback( const ros_arduino_msgs::Encoders& encoder_msg) {
 //Ros subcriber callback for imu messages
 void IMUCallback( const sensor_msgs::Imu& imu){
   //callback every time the robot's angular velocity is received
-  ros::Time current_time = ros::Time::now();  //TODO: get this from the message header?
+  ros::Time current_time = ros::Time::now();  
   //this block is to filter out imu noise
   //if(imu.angular_velocity.z > -0.03 && imu.angular_velocity.z < 0.03)
   if(imu.angular_velocity.z > -0.005 && imu.angular_velocity.z < 0)
@@ -331,16 +330,15 @@ int main(int argc, char** argv){
   // Delete? ros::Subscriber<lino_pid::linoPID> pid_sub("pid", pid_callback);
   
   //Ros publishers
-  //TODO: delete, dup of below ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(odom_frame, odom_publish_rate);
   ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>(wheel_odom_topic, odom_publish_rate);
-  raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm", 10); //TODO: use raw_pwm_pub_hz for 10??? or use different
+  raw_pwm_pub = nh.advertise<jbot2_msgs::jbot2_pwm>("raw_pwm",raw_pwm_pub_hz);
   
   //raw_pwm timmer
   raw_pwm_next_pub_time=ros::Time::now().toSec()+double(1.0/raw_pwm_pub_hz);  //Set next publish time
   
   setup();
 
-  double rate = odom_publish_rate; //launch parameter: odom_publish_rate TODO://move this in to man var section
+  double rate = odom_publish_rate; //launch parameter: odom_publish_rate 
   ros::Rate r(rate); 
   while(nh.ok())
   {
@@ -451,8 +449,6 @@ int main(int argc, char** argv){
       
     }
       
-    //TODO: only publish when something when newCmd is recieved , currently published forever.
-    //TODO: see https://github.com/ebrand0007/jazzybot_hardware_and_Arduino_code/blob/master/jazzy_base_arduino_code/jazzy_base_arduino/jazzy_base_arduino.ino#L308
     //this block stops the motor when no command is received
     double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
     //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
