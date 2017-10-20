@@ -475,7 +475,7 @@ int main(int argc, char** argv){
         raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
         //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
         //ROS_INFO_STREAM(buffer);          
-        {
+      }
       
     }
       
