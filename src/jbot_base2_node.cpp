@@ -440,39 +440,46 @@ int main(int argc, char** argv){
     //PID control loop, updates needed pid every at intervals defined in raw_pwm_pub_hz
     if ( main_current_time_toSec > raw_pwm_next_pub_time) 
     {
-      int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is recieved
-      //Publish the pwm to the hardware to move the robot
-      drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
-      raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
-      //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
-      //ROS_INFO_STREAM(buffer);          
       
-    }
-      
-    //this block stops the motor when no command is received
-    double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
-    //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
-    if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
-    {
-      if (debug_level > 1) 
+      //this block stops the motor when no command is received
+      double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
+      //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
+      if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
       {
-        sprintf (buffer, "     main_current_time_toSec: %15.4f",main_current_time_toSec);
-        ROS_INFO_STREAM(buffer);
-        sprintf (buffer, "     last_command_callback_time: %15.4f",last_command_callback_time);
-        ROS_INFO_STREAM(buffer);
-        sprintf (buffer, "     *cmd_vel exceeded. reseting requred_rpm to 0 Timediff: %15.4f",command_callback_timediff); //double(main_current_time_toSec - last_command_callback_time));
-        ROS_INFO_STREAM(buffer);
+        if (debug_level > 1) 
+        {
+          sprintf (buffer, "     main_current_time_toSec: %15.4f",main_current_time_toSec);
+          ROS_INFO_STREAM(buffer);
+          sprintf (buffer, "     last_command_callback_time: %15.4f",last_command_callback_time);
+          ROS_INFO_STREAM(buffer);
+          sprintf (buffer, "     *cmd_vel exceeded. reseting requred_rpm to 0 Timediff: %15.4f",command_callback_timediff); //double(main_current_time_toSec - last_command_callback_time));
+          ROS_INFO_STREAM(buffer);
+        }
+        //TODO: if left and right motor are already 0, why we need to do below and publish raw_pwm - drive_robot?
+        left_motor.required_rpm = 0;
+        right_motor.required_rpm = 0;
+        //recalculate pid
+        //calculate_pwm(&left_motor);   //TODO: added to slow motors slowly to remove jerk
+        //calculate_pwm(&right_motor);  //TODO: added to slow motors slowly tp remove jerk
+        right_motor.pwm = 0; //TODO, leads to jerk
+        left_motor.pwm = 0; //TODO, leads to jerk
+        drive_robot(left_motor.pwm, right_motor.pwm,600); //TODO: duration of 600 millsec should be a variable
       }
-      left_motor.required_rpm = 0;
-      right_motor.required_rpm = 0;
-      //recalculate pid
-      //calculate_pwm(&left_motor);   //TODO: added to slow motors slowly to remove jerk
-      //calculate_pwm(&right_motor);  //TODO: added to slow motors slowly tp remove jerk
-      right_motor.pwm = 0; //TODO, leads to jerk
-      left_motor.pwm = 0; //TODO, leads to jerk
-      drive_robot(left_motor.pwm, right_motor.pwm,600); //TODO: duration of 600 millsec should be a variable
+      
+      //This block dives the robot 
+      else
+      { 
+        int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is recieved
+        //Publish the pwm to the hardware to move the robot
+        drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
+        raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
+        //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
+        //ROS_INFO_STREAM(buffer);          
+        {
+      
     }
       
+
     g_last_loop_time = main_current_time;
     r.sleep();
   }

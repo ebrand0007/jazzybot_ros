@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+
+
+  <!--copied from linobot/bringup.launch /opt/ros/indigo/share/linorobot/launch/bringup.launch -->
+  <!--serial communication between arduino and pc via usb /-->
+  <node name="arduino_serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
+    <param name="port" value="/dev/linobase" />
+    <param name="baud" value="57600" />
+  </node>
+
+
+ <node pkg="ros_arduino_imu" type="raw_imu_bridge_node" name="raw_imu_bridge" output="screen" respawn="false">
+   <!--default world_frame: eun-->
+   <param name="imu/use_mag_msg" value="false"/>
+     <!--when use_mag_msg=false /imu/mag messages are sent in Vector3Stampe, true=MagneticField(depricated) -->
+  <!--rosparam>
+   imu/gyroscope_bias: {x: -0.013545, y: 0.056887, z: 0.012693 }
+   imu/accelerometer_bias: {x: -0.422578, y: 0.053516, z: -0.310391 }
+    </rosparam-->
+   <param name="imu/perform_calibration" value="true" />
+ </node>
+
+</launch>
+
