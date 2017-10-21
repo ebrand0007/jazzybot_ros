@@ -69,7 +69,7 @@ const double one_encodertick_in_radians = two_pi / ticks_per_wheel_rotation;
   //radian(r) is the radius of a circle.   2 pi r in radians = 360 deg
   
 const char *prog_name="jbot_base2_node";
-const char *prog_ver="2.1.0";
+const char *prog_ver="2.1.2";
 
 //Pid values
 float Kp = 0.4; // P constant
@@ -124,6 +124,7 @@ double th = 0.0;
 double vx = 0;
 double vy = 0;
 double vth = 0.0;
+
 //global imu values
 double g_imu_dt = 0.0; //imu delta time
 double g_imu_z = 0.0; //angular velocity is the rotation in Z from imu_filter_madgwick's output
@@ -142,9 +143,10 @@ void command_callback( const geometry_msgs::Twist& cmd_msg);
 double last_command_callback_time =0.0; //when exceeded, set desired rpms for motors to 0
 //TODO: delete? void pid_callback( const lino_pid::linoPID& pid);
 
-//ros publishers mesages
+//ros publishers messages
 jbot2_msgs::jbot2_pwm jbot2_pwm_msg;
 ros::Publisher raw_pwm_pub;
+
 
 void init_motor(Motor * mot)
 {
@@ -169,7 +171,7 @@ void setup()
   char buffer[80]; //string buffer for info logging
   
   //Print info
-  sprintf (buffer, "%s::Version: %s",prog_name,prog_ver);
+  sprintf (buffer, "%s::Jazzybot Software Version: %s",prog_name,prog_ver);
   ROS_INFO_STREAM(buffer);
   sprintf (buffer, "%s::Subscribing to encoder topic: %s",prog_name,encoder_topic.c_str());
   ROS_INFO_STREAM(buffer);
@@ -319,7 +321,7 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
-  nh_private_.param("debug_level",debug_level,0); //debug_level 1 or 2
+  nh_private_.param("debug_level",debug_level,0); //debug_level 1 to 10
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
   //ROS Subscribers 
@@ -441,10 +443,11 @@ int main(int argc, char** argv){
     if ( main_current_time_toSec > raw_pwm_next_pub_time) 
     {
       
+      int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is received\
+      
+      double command_callback_timediff=main_current_time_toSec - last_command_callback_time; 
       //this block stops the motor when no command is received
-      double command_callback_timediff=main_current_time_toSec - last_command_callback_time;
-      //if (double(main_current_time_toSec - last_command_callback_time) >= 1.400); //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
-      if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was reciveved, when exceeded  stop motors 
+      if (command_callback_timediff > 0.600) //TODO: need to get time interval last cmd_vel was received, when exceeded  stop motors 
       {
         if (debug_level > 1) 
         {
@@ -455,29 +458,24 @@ int main(int argc, char** argv){
           sprintf (buffer, "     *cmd_vel exceeded. reseting requred_rpm to 0 Timediff: %15.4f",command_callback_timediff); //double(main_current_time_toSec - last_command_callback_time));
           ROS_INFO_STREAM(buffer);
         }
-        //TODO: if left and right motor are already 0, why we need to do below and publish raw_pwm - drive_robot?
+        
+        
         left_motor.required_rpm = 0;
-        right_motor.required_rpm = 0;
-        //recalculate pid
+        right_motor.required_rpm = 0;        
+        right_motor.pwm = 0; //TODO, leads to jerk
+        left_motor.pwm = 0; //TODO, leads to jerk 
         //calculate_pwm(&left_motor);   //TODO: added to slow motors slowly to remove jerk
         //calculate_pwm(&right_motor);  //TODO: added to slow motors slowly tp remove jerk
-        right_motor.pwm = 0; //TODO, leads to jerk
-        left_motor.pwm = 0; //TODO, leads to jerk
-        drive_robot(left_motor.pwm, right_motor.pwm,600); //TODO: duration of 600 millsec should be a variable
       }
       
-      //This block dives the robot 
-      else
-      { 
-        int millis_duration=600; //Oh crap timeout in millisec to stop motors when no new pwm signal is recieved
-        //Publish the pwm to the hardware to move the robot
-        drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for 400 millisec
-        raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
-        //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
-        //ROS_INFO_STREAM(buffer);          
-      }
       
-    }
+      //Send calculated motor pwm values to the hardware to move the robot
+      drive_robot(left_motor.pwm,right_motor.pwm,millis_duration); //drive robot with pwm signals for millis_duration      
+      //Calculate next publish time
+      raw_pwm_next_pub_time=main_current_time_toSec+double(1.0/raw_pwm_pub_hz);  //set next pid update interval 
+      //sprintf (buffer, "  *raw_pwm_next_pub_time: %15.4f",raw_pwm_next_pub_time);
+      //ROS_INFO_STREAM(buffer);          
+      }
       
 
     g_last_loop_time = main_current_time;
