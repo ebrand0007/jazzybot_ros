@@ -403,7 +403,7 @@ int main(int argc, char** argv){
     odom.pose.pose.position.y = y;
     odom.pose.pose.position.z = 0.0;
     odom.pose.pose.orientation = odom_quat;    
-    //Pose Covariance matrix
+    //Pose Covariance matrix: TODO: these should not be hard set
     odom.pose.covariance[0]  = 0.01;
     odom.pose.covariance[7]  = 0.01;
     odom.pose.covariance[14] = 99999;
@@ -416,7 +416,7 @@ int main(int argc, char** argv){
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
     odom.twist.twist.angular.z = vth; //The   
-    //Twist Covariance matrix
+    //Twist Covariance matrix: TODO: these should not be hard set
     odom.twist.covariance[0]  = 0.001;
     odom.twist.covariance[7]  = 0.001;
     odom.twist.covariance[14] = 99999;
