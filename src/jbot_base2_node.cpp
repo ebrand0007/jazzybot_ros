@@ -24,7 +24,7 @@
 const char *prog_name="jbot_base2_node";
 const char *prog_ver="2.1.11";
 /* Changelog
- * 2.0.11 - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
+ * 2.0.11     - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
  * 
 */
 
