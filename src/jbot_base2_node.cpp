@@ -21,6 +21,13 @@
  */
 
 
+const char *prog_name="jbot_base2_node";
+const char *prog_ver="2.1.10";
+/* Changelog
+ * 2.0.10 - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
+ * 
+*/
+
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -68,8 +75,7 @@ const double ticks_per_wheel_rotation = encoder_pulse * gear_ratio;
 const double one_encodertick_in_radians = two_pi / ticks_per_wheel_rotation;
   //radian(r) is the radius of a circle.   2 pi r in radians = 360 deg
   
-const char *prog_name="jbot_base2_node";
-const char *prog_ver="2.1.2";
+
 
 //Pid values
 float Kp = 0.4; // P constant
@@ -395,8 +401,9 @@ int main(int argc, char** argv){
     //next, we'll publish the odometry topics over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = main_current_time;
-    odom.header.frame_id = wheel_odom_topic;
-    //TODO: set parent, shold be "odom" or base_link??
+    odom.header.frame_id = odom_frame;
+    odom.child_frame_id = baselink_frame;
+    
     
     //set the pose position
     odom.pose.pose.position.x = x;
@@ -412,7 +419,7 @@ int main(int argc, char** argv){
     odom.pose.covariance[35] = 0.01;
     
     //set the velocity twist
-    odom.child_frame_id = baselink_frame;
+    
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
     odom.twist.twist.angular.z = vth; //The   
