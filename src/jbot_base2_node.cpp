@@ -24,8 +24,11 @@
 const char *prog_name="jbot_base2_node";
 const char *prog_ver="2.1.11";
 /* Changelog
- * 2.0.11     - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
+ * 2.0.11       - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
  * 
+ * 2.0.12       - Added publish_tf bool to determine  if we should publish odom -> base_link transform
+ *              - Changed From: odom.header.frame_id = odom_frame TO: odom.header.frame_id = wheellink_frame;
+ *              - Commented out odom.child_frame_id = baselink_frame;
 */
 
 
@@ -112,13 +115,15 @@ Motor left_motor;
 Motor right_motor;
 
 //ros launch params definitions
-std::string baselink_frame; //TF base frame for robot usually: baselink_frame or base_link
-std::string odom_frame; // world frome to publish odom
-std::string wheel_odom_topic; // name of wheel odom topic to publish
-std::string vel_topic;  //to publish
-std::string encoder_topic; //to subscribe to
-int odom_publish_rate = 50; // pub rate for odom
-std::string imu_topic;  //to subscribe to
+std::string baselink_frame;             // TF base frame for robot usually: baselink_frame or base_link
+std::string odom_frame;                 // world frome to publish odom
+std::string wheel_odom_topic;           // name of wheel odom topic to publish
+std::string wheellink_frame;            // wheel odom frame link
+std::string vel_topic;                  // to publish
+std::string encoder_topic;              // to subscribe to
+int odom_publish_rate = 50;             // pub rate for odom
+std::string imu_topic;                  // to subscribe to
+bool publish_tf = true;                 // Should we publish transform from base_link to odom
 
 //TODO: joint states
 
@@ -195,6 +200,11 @@ void setup()
   ROS_INFO_STREAM(buffer);
   sprintf (buffer, "%s::Track Width(track_width): %.4f",prog_name,track_width);
   ROS_INFO_STREAM(buffer);
+  if ( publish_tf ) 
+    ROS_INFO_STREAM("publish_tf is true)";
+  else 
+    ROS_INFO_STREAM("publish_tf is false)";
+  
   
   //Debugging
   if ( debug_level > 1) 
@@ -323,11 +333,13 @@ int main(int argc, char** argv){
   nh_private_.param<std::string>("baselink_frame", baselink_frame, "base_link");
   nh_private_.param<std::string>("odom_frame", odom_frame, "odom"); 
   nh_private_.param<std::string>("wheel_odom_topic", wheel_odom_topic, "/odometry/wheelodom");
+  nh_private_.param<std::string>("wheellink_frame", wheellink_frame, "wheel_link");
   nh_private_.param<std::string>("encoder_topic",encoder_topic,"encoders");
   nh_private_.param<std::string>("imu_topic", imu_topic, "imu/data");
   nh_private_.param("odom_publish_rate", odom_publish_rate, 40); //odom pubish rate hz
   nh_private_.param("raw_pwm_pub_hz",raw_pwm_pub_hz,10); //rate in hrz to update the hardware pid
   nh_private_.param("debug_level",debug_level,0); //debug_level 1 to 10
+  nh_private_.param<bool>("publish_tf",publish_tf,true); //publish base_link -> odom transform or not
   //nh_private_.param<std::string>("vel_topic", vel_topic, "raw_vel");
   
   //ROS Subscribers 
@@ -384,25 +396,29 @@ int main(int argc, char** argv){
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
     
-    //first, we'll publish the odom transform world frame over tf
-    geometry_msgs::TransformStamped odom_trans;
-    odom_trans.header.stamp = main_current_time;
-    odom_trans.header.frame_id = odom_frame; 
-    odom_trans.child_frame_id = baselink_frame;
     
-    odom_trans.transform.translation.x = x;
-    odom_trans.transform.translation.y = y;
-    odom_trans.transform.translation.z = 0.0;
-    odom_trans.transform.rotation = odom_quat;
-    
-    //send the transform
-    odom_broadcaster.sendTransform(odom_trans);
+    if ( publish_tf == true )
+    { 
+      //Ppublish the odom transform world frame over tf
+      geometry_msgs::TransformStamped odom_trans;
+      odom_trans.header.stamp = main_current_time;
+      odom_trans.header.frame_id = odom_frame; 
+      odom_trans.child_frame_id = baselink_frame;
+      
+      odom_trans.transform.translation.x = x;
+      odom_trans.transform.translation.y = y;
+      odom_trans.transform.translation.z = 0.0;
+      odom_trans.transform.rotation = odom_quat;
+      
+      //send the transform
+      odom_broadcaster.sendTransform(odom_trans);
+    }
     
     //next, we'll publish the odometry topics over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = main_current_time;
-    odom.header.frame_id = odom_frame;
-    odom.child_frame_id = baselink_frame;
+    odom.header.frame_id = wheellink_frame;
+    //odom.child_frame_id = baselink_frame;  //TODO: do we need this??
     
     
     //set the pose position
