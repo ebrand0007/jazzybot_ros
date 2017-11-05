@@ -201,9 +201,9 @@ void setup()
   sprintf (buffer, "%s::Track Width(track_width): %.4f",prog_name,track_width);
   ROS_INFO_STREAM(buffer);
   if ( publish_tf ) 
-    ROS_INFO_STREAM("publish_tf is true)";
+    ROS_INFO_STREAM("publish_tf is true");
   else 
-    ROS_INFO_STREAM("publish_tf is false)";
+    ROS_INFO_STREAM("publish_tf is false");
   
   
   //Debugging
