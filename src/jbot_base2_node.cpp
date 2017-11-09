@@ -22,13 +22,16 @@
 
 
 const char *prog_name="jbot_base2_node";
-const char *prog_ver="2.1.11";
+const char *prog_ver="2.1.13";
 /* Changelog
  * 2.0.11       - changed odom.header.frame_id = odom_frame, was wheel_odom_topic
  * 
  * 2.0.12       - Added publish_tf bool to determine  if we should publish odom -> base_link transform
  *              - Changed From: odom.header.frame_id = odom_frame TO: odom.header.frame_id = wheellink_frame;
  *              - Commented out odom.child_frame_id = baselink_frame;
+ * 
+ * 2.0.13       - reverted odom.header.frame_id = odom_frame; //last was wheellink_frame; 
+ o              - uncommented and set odom.child_frame_id = wheellink_frame; //last was baselink_frame;  //TODO: do we need this?? //should be wheellink_frame*
 */
 
 
@@ -399,7 +402,7 @@ int main(int argc, char** argv){
     
     if ( publish_tf == true )
     { 
-      //Ppublish the odom transform world frame over tf
+      //Publish the odom transform world frame over tf
       geometry_msgs::TransformStamped odom_trans;
       odom_trans.header.stamp = main_current_time;
       odom_trans.header.frame_id = odom_frame; 
@@ -416,9 +419,9 @@ int main(int argc, char** argv){
     
     //next, we'll publish the odometry topics over ROS
     nav_msgs::Odometry odom;
-    odom.header.stamp = main_current_time;
-    odom.header.frame_id = wheellink_frame;
-    //odom.child_frame_id = baselink_frame;  //TODO: do we need this??
+    odom.header.stamp = main_current_time; 
+    odom.header.frame_id = odom_frame; //;ast was wheellink_frame; 
+    odom.child_frame_id = wheellink_frame; //last was baselink_frame;  //TODO: do we need this?? //should be wheellink_frame
     
     
     //set the pose position
@@ -451,6 +454,10 @@ int main(int argc, char** argv){
     // and https://github.com/chicagoedt/revo_robot/commit/620f3f61ea8ac832e2040fb4f4e5583a15e23e29
     // and https://answers.ros.org/question/12808/how-to-solve-timestamps-of-odometry-and-imu-are-x-seconds-apart/\
     // and https://github.com/ros-controls/ros_controllers/blob/kinetic-devel/diff_drive_controller/src/diff_drive_controller.cpp
+    //for (int i = 0; i < 36; i++) {
+      //odometry_message.twist.covariance[i] = twist_covariance_matrix[i];
+    //}
+    //from: https://github.com/rahulsinghk998/AGV_Localization/blob/master/Odometry/odometry/src/odometry.cpp
     
     //publish the message
     odom_pub.publish(odom);
